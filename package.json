@@ -1,0 +1,22 @@
+{
+  "name": "edgewell",
+  "version": "0.1.0",
+  "description": "EdgeWell - private on-device health and finance coach powered by QVAC",
+  "type": "module",
+  "main": "src/index.js",
+  "bin": {
+    "edgewell": "bin/edgewell.js"
+  },
+  "scripts": {
+    "start": "node bin/edgewell.js",
+    "test": "node --test test/"
+  },
+  "keywords": ["qvac", "edge", "ai", "health", "finance", "coach"],
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.17"
+  },
+  "dependencies": {
+    "@qvac/sdk": "*"
+  }
+}
