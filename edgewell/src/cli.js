@@ -64,5 +64,3 @@ export function parseFlags(args, defs = {}) {
   }
   return { ...defs, ...out };
 }
-
-export { dispatch } from "./dispatch.js";

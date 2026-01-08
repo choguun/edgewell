@@ -170,27 +170,24 @@ export class DelegatingLLM {
     return this.local.unload();
   }
 
-  async _withFallback(genLocalStream, body) {
+  async *_withFallback(body) {
+    let any = false;
     try {
-      let any = false;
-      const it = this.peer.stream(body)[Symbol.asyncIterator]();
-      while (true) {
-        const { value, done } = await it.next();
-        if (done) break;
+      for await (const tok of this.peer.stream(body)) {
         any = true;
-        yield value;
-      }
-      if (!any) {
-        for await (const tok of genLocalStream()) yield tok;
+        yield tok;
       }
     } catch (err) {
-      // Fall back to local on any peer error.
-      for await (const tok of genLocalStream()) yield tok;
+      // Peer failed - fall through to local.
+      any = false;
+    }
+    if (!any) {
+      for await (const tok of this.local.stream(body)) yield tok;
     }
   }
 
   async *stream(body) {
-    yield* this._withFallback(() => this.local.stream(body), body);
+    yield* this._withFallback(body);
   }
 
   async prompt(body) {
