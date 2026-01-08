@@ -1,4 +1,4 @@
-import { c, header } from "./cli.js";
+import { c, header } from "../cli.js";
 
 const USAGE = `
 ${c.bold("EdgeWell")} - private on-device health & finance coach (powered by QVAC)

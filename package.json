@@ -9,7 +9,7 @@
   },
   "scripts": {
     "start": "node bin/edgewell.js",
-    "test": "node --test test/"
+    "test": "node --test test/*.test.js"
   },
   "keywords": ["qvac", "edge", "ai", "health", "finance", "coach"],
   "license": "MIT",

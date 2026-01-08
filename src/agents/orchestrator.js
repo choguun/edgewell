@@ -16,7 +16,7 @@ const LIFESTYLE_SYSTEM = `You are EdgeWell Lifestyle, a private on-device habits
 Help with routines, productivity, and integrating health + finance
 recommendations into a sustainable daily plan. Be concise and supportive.`;
 
-function parseRoute(text) {
+function parseRoute(text, question = "") {
   const t = (text || "").trim();
   // Be tolerant: strip code fences, find first {...} block.
   const fence = t.match(/\{[\s\S]*?\}/);
@@ -28,8 +28,8 @@ function parseRoute(text) {
       return { agent, reason: obj.reason ?? "" };
     }
   } catch {}
-  // Keyword fallback.
-  const low = t.toLowerCase();
+  // Keyword fallback - check the original question, not the model's text.
+  const low = (question || "").toLowerCase();
   if (/(symptom|sleep|exercise|diet|medication|pain|stress|mood)/.test(low)) {
     return { agent: "health", reason: "keyword match" };
   }
@@ -54,7 +54,7 @@ export class Orchestrator {
       maxTokens: 120,
       temperature: 0,
     });
-    return parseRoute(text);
+    return parseRoute(text, question);
   }
 
   async ask(question, history = []) {
