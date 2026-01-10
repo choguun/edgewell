@@ -1,0 +1,32 @@
+EdgeWell sample health notes.
+You can index this file with: edgewell rag ingest data/sample_health_notes.txt
+
+Sleep
+- Most adults need 7 to 9 hours of sleep per night.
+- A consistent bedtime and wake time improve mood and energy.
+- Avoid screens 30 minutes before bed; it shortens sleep onset.
+
+Movement
+- Walking 8000 steps per day is associated with lower mortality.
+- Two short strength sessions per week preserve muscle mass past 40.
+- Stretching the hip flexors and chest helps desk workers.
+
+Nutrition
+- Hydration: 2 liters of water a day supports kidney function.
+- A high-protein breakfast reduces afternoon cravings.
+- Aim for 5 servings of vegetables and fruit a day.
+- Limit added sugar to under 25 grams per day.
+
+Stress
+- Box breathing (4-4-4-4) drops acute stress in under two minutes.
+- A 10-minute walk after lunch improves digestion and mood.
+- Talking to a friend is one of the most effective stress busters.
+
+Money
+- The 50/30/20 budget is a sane default: 50% needs, 30% wants, 20% savings.
+- Build a 6-month emergency fund before investing aggressively.
+- Track every expense for at least 30 days; most people are surprised.
+
+Safety
+- If you experience chest pain, sudden weakness on one side, severe
+  bleeding, or thoughts of self-harm, seek immediate medical help.
