@@ -3,10 +3,13 @@
 
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { validateRecord, ValidationError } from "./schema.js";
 
 export class JsonlStore {
-  constructor(filePath) {
+  constructor(filePath, { schema = null, strict = false } = {}) {
     this.filePath = filePath;
+    this.schema = schema;
+    this.strict = strict;
   }
 
   async _ensure() {
@@ -19,6 +22,11 @@ export class JsonlStore {
   }
 
   async append(record) {
+    if (this.schema) {
+      const candidate = { ...record };
+      if (!("_ts" in candidate)) candidate._ts = new Date().toISOString();
+      validateRecord(candidate, this.schema);
+    }
     await this._ensure();
     const line = JSON.stringify({ ...record, _ts: record._ts ?? new Date().toISOString() });
     await fs.appendFile(this.filePath, line + "\n", "utf8");
@@ -34,7 +42,10 @@ export class JsonlStore {
       if (!t) continue;
       try {
         out.push(JSON.parse(t));
-      } catch {
+      } catch (err) {
+        if (this.strict) {
+          throw new Error(`malformed line in ${this.filePath}: ${err.message}`);
+        }
         // skip malformed line
       }
     }
@@ -45,4 +56,16 @@ export class JsonlStore {
     const all = await this.readAll();
     return all.filter(predicate);
   }
+
+  async count() {
+    const all = await this.readAll();
+    return all.length;
+  }
+
+  async clear() {
+    await this._ensure();
+    await fs.writeFile(this.filePath, "");
+  }
 }
+
+export { ValidationError };
