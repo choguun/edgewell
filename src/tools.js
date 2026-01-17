@@ -3,6 +3,8 @@
 // them in a system prompt, and parse the model's <tool>...</tool>
 // output back into a tool call.
 
+import { validateRecord } from "./schema.js";
+
 const TOOLS = {
   calculator: {
     description: "Evaluate a basic arithmetic expression. Supports + - * / and parentheses.",
@@ -125,5 +127,3 @@ export class ToolRegistry {
     return t.run(params, ctx);
   }
 }
-
-import { validateRecord } from "./schema.js";
