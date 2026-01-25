@@ -6,15 +6,36 @@
 
 import http from "node:http";
 import { EdgeWellLLM } from "./qvac.js";
+import { defaultLogger, Logger } from "./logger.js";
+import { Metrics, timed } from "./metrics.js";
 
 // --- Server ---
 
-export function startServer({ host = "127.0.0.1", port = 8787, model, llm, onProgress } = {}) {
+export function startServer({
+  host = "127.0.0.1",
+  port = 8787,
+  model,
+  llm,
+  onProgress,
+  logger = defaultLogger,
+  metrics = new Metrics(),
+} = {}) {
+  const log = logger.child({ component: "p2p-server", port });
+  const m = metrics;
+
   const server = http.createServer(async (req, res) => {
+    const t0 = Date.now();
+    m.inc("p2p_server_requests_total", 1, { path: req.url, method: req.method });
     try {
       if (req.method === "GET" && req.url === "/health") {
         res.writeHead(200, { "content-type": "application/json" });
-        res.end(JSON.stringify({ ok: true, model: model ?? null }));
+        res.end(JSON.stringify({ ok: true, model: model ?? null, uptimeMs: process.uptime() * 1000 }));
+        log.debug("health", { remote: req.socket.remoteAddress });
+        return;
+      }
+      if (req.method === "GET" && req.url === "/metrics") {
+        res.writeHead(200, { "content-type": "application/json" });
+        res.end(JSON.stringify(m.snapshot()));
         return;
       }
       if (req.method === "POST" && req.url === "/completion") {
@@ -26,6 +47,7 @@ export function startServer({ host = "127.0.0.1", port = 8787, model, llm, onPro
         if (!llm) {
           res.writeHead(500, { "content-type": "application/json" });
           res.end(JSON.stringify({ error: "server has no llm configured" }));
+          m.inc("p2p_server_errors_total", 1, { reason: "no_llm" });
           return;
         }
 
@@ -35,26 +57,47 @@ export function startServer({ host = "127.0.0.1", port = 8787, model, llm, onPro
             "cache-control": "no-cache",
             "x-accel-buffering": "no",
           });
+          let tokens = 0;
           try {
-            for await (const tok of llm.stream({ system, user, history, maxTokens, temperature })) {
+            for await (const tok of await timed(m, "p2p_server_stream_ms", {}, () =>
+              llm.stream({ system, user, history, maxTokens, temperature }),
+            )) {
+              tokens++;
               res.write(JSON.stringify({ token: tok }) + "\n");
             }
             res.write(JSON.stringify({ done: true }) + "\n");
+            m.inc("p2p_server_tokens_total", tokens);
+            log.info("completion streamed", { tokens, ms: Date.now() - t0 });
           } catch (err) {
+            m.inc("p2p_server_errors_total", 1, { reason: "stream" });
             res.write(JSON.stringify({ error: String(err?.message ?? err) }) + "\n");
+            log.error("stream failed", { err: String(err?.message ?? err) });
           }
           res.end();
         } else {
-          const text = await llm.prompt({ system, user, history, maxTokens, temperature });
-          res.writeHead(200, { "content-type": "application/json" });
-          res.end(JSON.stringify({ text }));
+          try {
+            const text = await timed(m, "p2p_server_prompt_ms", {}, () =>
+              llm.prompt({ system, user, history, maxTokens, temperature }),
+            );
+            m.inc("p2p_server_tokens_total", text.length);
+            res.writeHead(200, { "content-type": "application/json" });
+            res.end(JSON.stringify({ text }));
+            log.info("completion served", { ms: Date.now() - t0, chars: text.length });
+          } catch (err) {
+            m.inc("p2p_server_errors_total", 1, { reason: "prompt" });
+            res.writeHead(500, { "content-type": "application/json" });
+            res.end(JSON.stringify({ error: String(err?.message ?? err) }));
+            log.error("prompt failed", { err: String(err?.message ?? err) });
+          }
         }
         return;
       }
       res.writeHead(404, { "content-type": "application/json" });
       res.end(JSON.stringify({ error: "not found" }));
     } catch (err) {
+      m.inc("p2p_server_errors_total", 1, { reason: "unhandled" });
       onProgress?.(String(err?.message ?? err));
+      log.error("unhandled", { err: String(err?.message ?? err) });
       res.writeHead(500, { "content-type": "application/json" });
       res.end(JSON.stringify({ error: String(err?.message ?? err) }));
     }
@@ -64,6 +107,7 @@ export function startServer({ host = "127.0.0.1", port = 8787, model, llm, onPro
     server.once("error", reject);
     server.listen(port, host, () => {
       const addr = server.address();
+      log.info("listening", { host: addr.address, port: addr.port, model: model ?? null });
       resolve({
         host: addr.address,
         port: addr.port,
