@@ -10,6 +10,11 @@ import { ragCommand } from "./commands/rag.js";
 import { planCommand } from "./commands/plan.js";
 import { statusCommand } from "./commands/status.js";
 import { versionCommand } from "./commands/version.js";
+import { profileCommand } from "./commands/profile.js";
+import { doctorCommand } from "./commands/doctor.js";
+import { configCommand } from "./commands/config.js";
+import { modelsCommand } from "./commands/models.js";
+import { pluginsListCommand, pluginsRunCommand } from "./commands/plugins.js";
 
 const MAP = {
   help: helpCommand,
@@ -26,6 +31,15 @@ const MAP = {
   rag: ragCommand,
   plan: planCommand,
   status: statusCommand,
+  profile: profileCommand,
+  doctor: doctorCommand,
+  config: configCommand,
+  models: modelsCommand,
+  plugins: (args, ew) => {
+    if (args[0] === "list") return pluginsListCommand(args.slice(1), ew);
+    if (args[0] === "run") return pluginsRunCommand(args.slice(1), ew);
+    return pluginsListCommand([], ew);
+  },
 };
 
 export async function dispatch(cmd, rest, ew) {
