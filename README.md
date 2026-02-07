@@ -96,6 +96,8 @@ All knobs live in `src/config.js` and can be overridden by env vars:
 | `EDGEWELL_P2P_HOST`       | `127.0.0.1`                   | Peer host                         |
 | `EDGEWELL_P2P_PORT`       | `8787`                        | Peer port                         |
 | `EDGEWELL_P2P_ENABLED=1`  | `0`                           | Enable delegation with fallback   |
+| `EDGEWELL_LOG`            | `info`                        | Log level: debug, info, warn, error |
+| `EDGEWELL_PLUGINS`        | `./plugins`                   | Plugin directory                  |
 
 ## Project layout
 
