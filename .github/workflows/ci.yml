@@ -1,0 +1,36 @@
+name: EdgeWell CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Unit tests (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ["22.17", "24"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js ${{ matrix.node }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - name: Install
+        run: npm install --no-audit --no-fund
+      - name: Run tests
+        run: npm test
+      - name: Smoke CLI
+        run: |
+          node bin/edgewell.js version
+          node bin/edgewell.js help | head -5
+          node bin/edgewell.js status
+          node bin/edgewell.js doctor
+          node bin/edgewell.js models list
+          node bin/edgewell.js config > /dev/null
+          node bin/edgewell.js redact text "my email is ada@example.com" | grep REDACTED
