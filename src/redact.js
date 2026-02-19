@@ -3,10 +3,7 @@
 // markers so the rest of the prompt structure stays intact.
 
 const RULES = [
-  // Email
-  { kind: "email", re: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, label: "EMAIL" },
-  // International phone numbers, simple heuristic.
-  { kind: "phone", re: /(?:\+?\d{1,3}[\s-]?)?(?:\(?\d{2,4}\)?[\s-]?)?\d{3,4}[\s-]?\d{3,4}/g, label: "PHONE" },
+  // Most specific first so generic patterns don't get there first.
   // Long digit runs that look like credit-card or national-id numbers.
   { kind: "longDigits", re: /\b\d{13,19}\b/g, label: "DIGITS" },
   // Thai national id (13 digits with optional dashes).
@@ -15,6 +12,10 @@ const RULES = [
   { kind: "ssn", re: /\b\d{3}-\d{2}-\d{4}\b/g, label: "SSN" },
   // IPv4.
   { kind: "ipv4", re: /\b(?:\d{1,3}\.){3}\d{1,3}\b/g, label: "IP" },
+  // Email
+  { kind: "email", re: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, label: "EMAIL" },
+  // International phone numbers, simple heuristic.
+  { kind: "phone", re: /(?:\+?\d{1,3}[\s-]?)?(?:\(?\d{2,4}\)?[\s-]?)?\d{3,4}[\s-]?\d{3,4}/g, label: "PHONE" },
 ];
 
 export function redact(text, { tags = null } = {}) {

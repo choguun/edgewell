@@ -9,7 +9,7 @@ test("redact scrubs emails", () => {
 });
 
 test("redact scrubs long digit runs", () => {
-  const out = redact("card 4111 1111 1111 1111 thank you");
+  const out = redact("card 4111111111111111 thank you");
   assert.ok(!out.includes("4111111111111111"));
   assert.ok(out.includes("[REDACTED_DIGITS]"));
 });

@@ -7,8 +7,9 @@ import { webcrypto } from "node:crypto";
 const { subtle } = webcrypto;
 
 const ALGO = "AES-GCM";
+const NODE_CIPHER = "aes-256-gcm";
 const KEY_LEN = 32;
-const SCRYPT_PARAMS = { N: 1 << 15, r: 8, p: 1, dkLen: KEY_LEN };
+const SCRYPT_PARAMS = { N: 1 << 14, r: 8, p: 1, maxmem: 64 * 1024 * 1024 };
 const SALT_LEN = 16;
 const IV_LEN = 12;
 
@@ -55,7 +56,7 @@ export async function encryptString(plaintext, passphrase) {
   const salt = randomBytes(SALT_LEN);
   const iv = randomBytes(IV_LEN);
   const key = scryptSync(passphrase, salt, KEY_LEN, SCRYPT_PARAMS);
-  const cipher = createCipheriv(ALGO, key, iv);
+  const cipher = createCipheriv(NODE_CIPHER, key, iv);
   const ct = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
   const tag = cipher.getAuthTag();
   return {
@@ -80,7 +81,7 @@ export async function decryptString(envelope, passphrase) {
   const ct = b64ToBytes(envelope.ct);
   const tag = b64ToBytes(envelope.tag);
   const key = scryptSync(passphrase, salt, KEY_LEN, envelope.kdfParams ?? SCRYPT_PARAMS);
-  const decipher = createDecipheriv(ALGO, key, iv);
+  const decipher = createDecipheriv(NODE_CIPHER, key, iv);
   decipher.setAuthTag(tag);
   const pt = Buffer.concat([decipher.update(ct), decipher.final()]);
   return pt.toString("utf8");

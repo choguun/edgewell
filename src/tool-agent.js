@@ -48,6 +48,7 @@ export class ToolAgent {
     let messages = history.slice();
     let last = question;
     let lastReply = "";
+    const allCalls = [];
     for (let i = 0; i < this.maxRounds; i++) {
       const reply = await this.llm.prompt({
         system: this._systemPrompt(),
@@ -57,7 +58,8 @@ export class ToolAgent {
       });
       lastReply = reply;
       const calls = extractToolCalls(reply);
-      if (calls.length === 0) return { reply, toolCalls: [] };
+      if (calls.length === 0) return { reply, toolCalls: allCalls };
+      allCalls.push(...calls);
 
       const results = [];
       for (const c of calls) {
@@ -81,6 +83,6 @@ export class ToolAgent {
         lastReply = reply;
       }
     }
-    return { reply: lastReply, toolCalls: extractToolCalls(lastReply) };
+    return { reply: lastReply, toolCalls: allCalls };
   }
 }
