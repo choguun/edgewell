@@ -16,6 +16,7 @@ import { configCommand } from "./commands/config.js";
 import { modelsCommand } from "./commands/models.js";
 import { pluginsListCommand, pluginsRunCommand } from "./commands/plugins.js";
 import { redactCommand } from "./commands/redact.js";
+import { summaryCommand } from "./commands/summary.js";
 
 const MAP = {
   help: helpCommand,
@@ -37,6 +38,7 @@ const MAP = {
   config: configCommand,
   models: modelsCommand,
   redact: redactCommand,
+  summary: summaryCommand,
   plugins: (args, ew) => {
     if (args[0] === "list") return pluginsListCommand(args.slice(1), ew);
     if (args[0] === "run") return pluginsRunCommand(args.slice(1), ew);
