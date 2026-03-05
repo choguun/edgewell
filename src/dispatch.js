@@ -18,6 +18,7 @@ import { pluginsListCommand, pluginsRunCommand } from "./commands/plugins.js";
 import { redactCommand } from "./commands/redact.js";
 import { summaryCommand } from "./commands/summary.js";
 import { tagsCommand } from "./commands/tags.js";
+import { evalCommand } from "./commands/eval.js";
 
 const MAP = {
   help: helpCommand,
