@@ -19,6 +19,7 @@ import { redactCommand } from "./commands/redact.js";
 import { summaryCommand } from "./commands/summary.js";
 import { tagsCommand } from "./commands/tags.js";
 import { evalCommand } from "./commands/eval.js";
+import { benchCommand } from "./commands/bench.js";
 
 const MAP = {
   help: helpCommand,
