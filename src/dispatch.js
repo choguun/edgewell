@@ -20,6 +20,7 @@ import { summaryCommand } from "./commands/summary.js";
 import { tagsCommand } from "./commands/tags.js";
 import { evalCommand } from "./commands/eval.js";
 import { benchCommand } from "./commands/bench.js";
+import { snapshotCommand } from "./commands/snapshot.js";
 
 const MAP = {
   help: helpCommand,
@@ -42,6 +43,10 @@ const MAP = {
   models: modelsCommand,
   redact: redactCommand,
   summary: summaryCommand,
+  tags: tagsCommand,
+  eval: evalCommand,
+  bench: benchCommand,
+  snapshot: snapshotCommand,
   plugins: (args, ew) => {
     if (args[0] === "list") return pluginsListCommand(args.slice(1), ew);
     if (args[0] === "run") return pluginsRunCommand(args.slice(1), ew);
