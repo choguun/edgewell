@@ -1,6 +1,6 @@
 {
   "name": "edgewell",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "EdgeWell - private on-device health and finance coach powered by QVAC",
   "type": "module",
   "main": "src/index.js",
