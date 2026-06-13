@@ -5,7 +5,34 @@ loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 ## [Unreleased]
 
-## [2.0.0] - 2026-02-XX
+### Planned for 3.0.0 — "Senses & Memory"
+- Vector RAG with pluggable embedding backends (QVAC + hash fallback).
+- Multimodal pipelines for image and audio ingest.
+- Mobile companion HTTP/WebSocket API with mDNS discovery.
+- Lifestyle agents (sleep, nutrition, hydration, activity).
+- Web UI front-end (HTML/JS) bound to the companion server.
+- Config profiles for `mobile`, `tinkerer`, and `desktop` form factors.
+
+### Added in 3.0.0-alpha
+- `src/vector-rag.js` — hash embedder + cosine similarity primitives.
+- `src/vector-store.js` — in-memory vector store with cosine top-k.
+- `src/embedder.js` — pluggable embedder factory (hash + QVAC).
+- `src/vector-index.js` — embedder + store + chunker.
+- `src/retrieval-fusion.js` — reciprocal rank fusion.
+- `src/hybrid-search.js` — lexical + vector hybrid search.
+- `src/reranker.js` — bigram re-ranker.
+- `src/multimodal/{image,audio,sensors,index}.js` — multimodal pipelines.
+- `src/agents/{sleep,nutrition,hydration,activity}.js` — lifestyle agents.
+- `src/companion/{auth,router,server,mdns,index}.js` — companion subsystem.
+- `src/profiles.js` — form-factor profiles.
+- `src/commands/{companion,profiles,sensors,multimodal,export,import,vector,hybrid}.js`.
+- `web/{index.html,style.css,app.js,README.md}` — static web UI.
+- `docs/{ROADMAP,ARCHITECTURE,DEPLOYMENT,MIGRATION-2-to-3,PLUGINS}.md`.
+- `examples/plugins/{nutrition,companion-token,embedder-hash}.plugin.js`.
+- `.env.example` — documented environment variables.
+- `data/sample_health_notes_v3.txt` and `data/sample_sensors.jsonl`.
+
+## [2.0.0] - 2026-02-26
 
 ### Added
 - **Model registry** (`src/registry.js`) with curated QVAC model

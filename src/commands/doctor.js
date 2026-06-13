@@ -78,6 +78,32 @@ export async function doctorCommand(_args, ew) {
     checks.push({ name: "p2p peer health", ok: true, info: "delegation disabled (skipped)" });
   }
 
+  // v3.0.0 checks
+  await check("vector index available", async () => {
+    const { VectorIndex } = await import("../vector-index.js");
+    const idx = new VectorIndex({ dim: 64 });
+    return `VectorIndex ready (dim=${idx.dim})`;
+  });
+
+  await check("hybrid search available", async () => {
+    const { HybridSearch } = await import("../hybrid-search.js");
+    if (typeof HybridSearch !== "function") throw new Error("HybridSearch is not exported");
+    return "HybridSearch export present";
+  });
+
+  await check("profiles registered", async () => {
+    const { PROFILES } = await import("../profiles.js");
+    const names = Object.keys(PROFILES);
+    if (names.length < 3) throw new Error("expected at least 3 profiles");
+    return names.join(", ");
+  });
+
+  await check("plugin loader v2", async () => {
+    const { runPluginHooks } = await import("../plugins.js");
+    if (typeof runPluginHooks !== "function") throw new Error("runPluginHooks missing");
+    return "v3.0.0 hooks supported";
+  });
+
   let bad = 0;
   for (const c1 of checks) {
     const status = c1.ok ? c.green("OK  ") : c.red("FAIL");

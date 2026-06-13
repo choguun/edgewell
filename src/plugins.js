@@ -2,9 +2,13 @@
 //
 // Security model: a plugin is a JS file living in a user-chosen
 // directory (default: ./plugins). The file must be named
-// <name>.plugin.js. It must export a default async function that
-// receives the EdgeWell instance. The plugin can then register
-// custom agents, tools, or CLI subcommands.
+// <name>.plugin.js. It exports either:
+//
+//   (a) a default async function that receives the EdgeWell
+//       instance (v2.0.0 style), or
+//   (b) a default object with `name`, `version`, and `hooks`
+//       (v3.0.0 style). The loader calls each hook with the
+//       appropriate context.
 //
 // The loader only imports files that:
 //   1. End with .plugin.js
@@ -28,26 +32,70 @@ function isPluginFile(name) {
   return name.endsWith(PLUGIN_SUFFIX);
 }
 
-export async function loadPlugins(dir, ew) {
-  if (!dir) return [];
+// Run a v3.0.0-style plugin object against the given context. The
+// context is built up incrementally as each hook fires so plugins
+// can register embeddings, agents, and routes for later plugins to
+// see.
+export async function runPluginHooks(plugin, ctx) {
+  const hooks = plugin.hooks ?? {};
+  if (typeof hooks.onLoad === "function") {
+    await hooks.onLoad({ ew: ctx.ew, log: ctx.log });
+  }
+  if (typeof hooks.registerEmbedder === "function") {
+    const register = (entry) => ctx.embedders.set(entry.name, entry);
+    await hooks.registerEmbedder({ register, ew: ctx.ew });
+  }
+  if (typeof hooks.registerAgent === "function") {
+    const register = (entry) => ctx.agents.set(entry.name, entry.agent);
+    await hooks.registerAgent({ register, ew: ctx.ew });
+  }
+  if (typeof hooks.registerRoute === "function") {
+    const register = (entry) => ctx.routes.push(entry);
+    await hooks.registerRoute({ register, ew: ctx.ew });
+  }
+}
+
+export function makePluginContext({ ew, log = null }) {
+  return {
+    ew,
+    log: log ?? {
+      info: () => {},
+      warn: () => {},
+      error: () => {},
+      debug: () => {},
+    },
+    embedders: new Map(),
+    agents: new Map(),
+    routes: [],
+  };
+}
+
+export async function loadPlugins(dir, ew, opts = {}) {
+  if (!dir) return { loaded: [], context: makePluginContext({ ew }) };
   const absDir = path.resolve(dir);
   let entries;
   try {
     entries = await fs.readdir(absDir, { withFileTypes: true });
   } catch {
-    return [];
+    return { loaded: [], context: makePluginContext({ ew }) };
   }
+  const context = opts.context ?? makePluginContext({ ew });
   const loaded = [];
   for (const e of entries) {
     if (!e.isFile() && !e.isSymbolicLink()) continue;
     if (!isPluginFile(e.name)) continue;
     const file = path.join(absDir, e.name);
     try {
-      const mod = await import(pathToFileURL(file).href + `?t=${Date.now()}`);
+      const mod = await import(pathToFileURL(file).href + `?t=${Date.now()}-${Math.random()}`);
       const factory = mod.default ?? mod.plugin;
       if (typeof factory === "function") {
+        // v2.0.0 style.
         await factory(ew);
-        loaded.push({ name: e.name, ok: true });
+        loaded.push({ name: e.name, ok: true, kind: "function" });
+      } else if (factory && typeof factory === "object") {
+        // v3.0.0 style.
+        await runPluginHooks(factory, context);
+        loaded.push({ name: e.name, ok: true, kind: "object" });
       } else {
         loaded.push({ name: e.name, ok: false, error: "no default export" });
       }
@@ -55,7 +103,7 @@ export async function loadPlugins(dir, ew) {
       loaded.push({ name: e.name, ok: false, error: String(err?.message ?? err) });
     }
   }
-  return loaded;
+  return { loaded, context };
 }
 
 export async function listPluginFiles(dir) {

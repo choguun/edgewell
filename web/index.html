@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>EdgeWell Companion</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>EdgeWell</h1>
+      <p id="status" class="muted">disconnected</p>
+    </header>
+
+    <main>
+      <section id="chat">
+        <h2>Chat</h2>
+        <div id="messages" aria-live="polite"></div>
+        <form id="chat-form">
+          <input id="chat-input" type="text" placeholder="Ask EdgeWell…" autocomplete="off" />
+          <button type="submit">Send</button>
+        </form>
+      </section>
+
+      <section id="journal">
+        <h2>Journal</h2>
+        <form id="journal-form">
+          <textarea id="journal-text" placeholder="Today I noticed…" rows="3"></textarea>
+          <input id="journal-tags" type="text" placeholder="tags (comma separated)" />
+          <button type="submit">Add entry</button>
+        </form>
+        <ul id="journal-list"></ul>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>

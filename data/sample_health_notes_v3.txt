@@ -1,0 +1,65 @@
+EdgeWell v3.0.0 sample health notes
+====================================
+
+This file is meant to be ingested with `edgewell rag ingest
+sample_health_notes_v3.txt` to give the v3.0.0 vector RAG something
+to work with. The chunks are short and self-contained so the
+hybrid search demo runs end to end in a few seconds.
+
+Sleep
+-----
+
+A consistent bedtime is the single biggest lever for sleep quality.
+Going to bed within a 30-minute window each night trains the
+circadian rhythm and reduces the time it takes to fall asleep.
+Caffeine has a half-life of about five hours, so a 14:00 coffee is
+still half as strong at 19:00 and a quarter as strong at midnight.
+Alcohol helps people fall asleep faster but it fragments REM
+sleep, leaving you less restored in the morning.
+
+Movement
+--------
+
+A daily walk of at least 30 minutes at a pace that raises your
+heart rate but still lets you hold a conversation is associated
+with a 20% lower all-cause mortality in observational studies.
+Strength training twice a week protects bone density and joint
+health as we age. Mobility work — gentle stretching, yoga, or
+foam rolling — reduces injury risk and improves recovery.
+
+Nutrition
+---------
+
+A balanced plate is roughly half vegetables, a quarter lean
+protein, and a quarter complex carbohydrates. The Mediterranean
+diet pattern — olive oil, fish, nuts, whole grains — has the
+strongest evidence base for cardiovascular and cognitive health.
+Ultra-processed foods are linked to weight gain independent of
+calorie count, possibly because of how they are engineered to
+override satiety signals.
+
+Hydration
+---------
+
+Two litres of water a day is a reasonable adult target, more in
+hot climates or during exercise. Thirst is a lagging signal — by
+the time you feel thirsty, you are already 1-2% dehydrated. A
+reusable bottle on the desk is the simplest hydration intervention.
+
+Stress
+------
+
+Box breathing — inhale 4s, hold 4s, exhale 4s, hold 4s — is a
+fast, free, evidence-based way to bring the autonomic nervous
+system back toward baseline. Daily 10-minute sessions measurably
+lower cortisol in a few weeks. Sleep, movement, and social
+connection are the three pillars of chronic stress resilience.
+
+Finances
+--------
+
+A simple monthly budget — income minus fixed costs minus savings
+goal — surfaces where the discretionary dollars go. Automating
+the savings transfer the day after payday removes willpower
+from the equation. An emergency fund of three to six months of
+expenses is the single biggest defence against debt spirals.

@@ -25,6 +25,47 @@ ID at runtime.
 - **CLI** with `chat`, `ask`, `journal`, `expense`, `rag`, `plan`,
   `serve`, `status`, and `version` subcommands.
 
+## What's new in v2.0.0
+
+- Model registry with curated QVAC model metadata.
+- Hand-rolled JSON-schema validator and ready-made schemas.
+- Tool registry with `calculator`, `datetime`, `search_kb`,
+  `add_expense`, and `add_journal` tools.
+- Tool-calling agent that parses `<tool name="...">{json}</tool>`.
+- At-rest encryption (scrypt + AES-256-GCM).
+- PII redaction (emails, phones, Thai national IDs, US SSNs, IPv4).
+- Multi-peer mesh with health checks and majority-vote consensus.
+- Structured logger, in-process metrics, plugin loader.
+- New CLI subcommands: `profile`, `doctor`, `config`, `models`,
+  `plugins`, `redact`, `summary`, `tags`, `eval`, `bench`, `snapshot`.
+
+## What's new in v3.0.0 (alpha)
+
+v3.0.0 is the "Senses & Memory" release. It adds three new
+capabilities and keeps every v2.0.0 surface area intact.
+
+- **Vector memory** alongside the existing TF-IDF RAG. Pluggable
+  embedder (hash by default, real QVAC embeddings in production).
+  Hybrid lexical + vector search with reciprocal rank fusion and
+  a bigram re-ranker.
+- **Multimodal ingest** for images, audio, and wearable sensor
+  streams. The default is offline-friendly placeholders; inject a
+  real captioner / transcriber at runtime.
+- **Mobile companion** HTTP server with HMAC bearer tokens, a
+  dependency-free router, and an mDNS announcement stub. Ships
+  with a small static web UI (`web/`) for chat and journal.
+- **Lifestyle agents**: sleep, nutrition, hydration, activity. Each
+  agent exposes `summarise` and `advise`.
+- **Form-factor profiles** for `mobile`, `tinkerer`, and `desktop`.
+  `edgewell profiles list|show|apply <name>`.
+- **New CLI subcommands**: `companion`, `profiles`, `sensors`,
+  `multimodal`, `export`, `import`, `vector`, `hybrid`, `metrics`,
+  `agents`.
+- **Plugin loader v2**: plugins may now export a `hooks` object and
+  register embedders, agents, and HTTP routes from JS.
+- **Documentation**: `docs/ROADMAP.md`, `docs/ARCHITECTURE.md`,
+  `docs/DEPLOYMENT.md`, `docs/MIGRATION-2-to-3.md`, `docs/PLUGINS.md`.
+
 ## Requirements
 
 - Node.js >= 22.17

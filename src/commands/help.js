@@ -19,6 +19,44 @@ ${c.bold("Commands:")}
   ${c.cyan("plan health")} "<goal>"       Generate a 7-day health plan
   ${c.cyan("plan finance")} [--income N]  Generate a monthly finance plan
   ${c.cyan("profile show|set|init")}      View or update the user profile
+  ${c.cyan("profile-reset")}               Clear the on-disk user profile (v3.0.0)
+  ${c.cyan("profiles list|show|apply")}   Manage form-factor profiles (v3.0.0)
+  ${c.cyan("companion --port N")}         Start the v3.0.0 mobile companion server
+  ${c.cyan("multimodal <file>")}          Ingest image/audio/text into RAG (v3.0.0)
+  ${c.cyan("sensors ingest|summarise")}   Process wearable JSONL streams (v3.0.0)
+  ${c.cyan("vector search|stats|clear")}  Inspect the vector RAG index (v3.0.0)
+  ${c.cyan("hybrid \"<query>\"")}          Lexical + vector fused search (v3.0.0)
+  ${c.cyan("export <file>")}              Write a portable JSON dump (v3.0.0)
+  ${c.cyan("import <file>")}              Merge a JSON dump into the stores (v3.0.0)
+  ${c.cyan("compare <a> <b>")}            Diff two export files (v3.0.0)
+  ${c.cyan("agents")}                     List the v3.0.0 agent bundle
+  ${c.cyan("metrics")}                    Print in-process counters and histograms
+  ${c.cyan("info")}                       One-screen overview of EdgeWell
+  ${c.cyan("size")}                       On-disk size of the data files
+  ${c.cyan("where")}                      Resolved on-disk file paths
+  ${c.cyan("deps")}                       Runtime and dev dependencies
+  ${c.cyan("seed <N>")}                   Append N synthetic journal+expense rows
+  ${c.cyan("demo-data")}                  Load the bundled sample data
+  ${c.cyan("today")}                      Today's journal and expenses
+  ${c.cyan("yesterday")}                  Yesterday's journal and expenses
+  ${c.cyan("tail [N]")}                   Last N journal entries (default 10)
+  ${c.cyan("grep <pattern>")}             Substring search of the journal
+  ${c.cyan("word-count")}                 Journal word and character counts
+  ${c.cyan("journal-stats")}              Journal length, range, top tags
+  ${c.cyan("expenses-stats")}             Expense totals, range, per-category
+  ${c.cyan("tag-stats")}                  Per-tag first/last/count
+  ${c.cyan("tag-cloud")}                  ASCII tag cloud
+  ${c.cyan("tags-add <id> <tag>")}        Append a tag to a journal entry
+  ${c.cyan("lint")}                       Data integrity check
+  ${c.cyan("token [subject]")}            Mint a companion bearer token
+  ${c.cyan("self-test")}                  Run the project test suite
+  ${c.cyan("ci")}                         Local GitHub Actions checks
+  ${c.cyan("version-history [N]")}        Last N CHANGELOG.md commits
+  ${c.cyan("summary week|month")}         Roll up journal + expenses (v2.0.0+)
+  ${c.cyan("tags")}                       Show top journal tags (v2.0.0+)
+  ${c.cyan("eval <expr>")}                Calculator tool one-shot (v2.0.0+)
+  ${c.cyan("bench")}                      LLM throughput benchmark (v2.0.0+)
+  ${c.cyan("snapshot")}                   Dump profile + journal + expenses as JSON
   ${c.cyan("models list|describe")}       Browse the QVAC model registry
   ${c.cyan("plugins list|run")}           Manage local plugins (EDGEWELL_PLUGINS)
   ${c.cyan("status")}                     Show config, peer status, RAG size
