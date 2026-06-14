@@ -1,15 +1,34 @@
 // EdgeWell default configuration.
 // Central place to tweak model choice, P2P endpoints, and storage paths.
 
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
+/**
+ * Walk up from `start` to find the nearest package.json. Works in
+ * both the dev layout (src/config.ts -> ../package.json) and the
+ * compiled layout (dist/src/config.js -> ../../package.json).
+ */
+function findPackageJson(start: string): string | null {
+  let dir = start;
+  for (let i = 0; i < 8; i++) {
+    const candidate = resolve(dir, "package.json");
+    if (existsSync(candidate)) return candidate;
+    const parent = resolve(dir, "..");
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return null;
+}
+
 function readPkgVersion(): string {
+  const found = findPackageJson(here);
+  if (!found) return "3.0.0";
   try {
-    const raw = readFileSync(resolve(here, "..", "package.json"), "utf8");
+    const raw = readFileSync(found, "utf8");
     const pkg = JSON.parse(raw) as { version?: string };
     return pkg.version ?? "3.0.0";
   } catch {
@@ -57,12 +76,18 @@ export interface EdgeWellConfig {
  * walks up to the package root.
  */
 export function projectRoot(): string {
-  return resolve(here, "..");
+  // Walk up to the project root (where package.json lives).
+  // Works in both the dev layout (src/) and the compiled
+  // layout (dist/src/).
+  const found = findPackageJson(here);
+  if (!found) return resolve(here, "..");
+  return dirname(found);
 }
 
 export function readPackageJson(): unknown {
-  const p = resolve(here, "..", "package.json");
-  return JSON.parse(readFileSync(p, "utf8"));
+  const found = findPackageJson(here);
+  if (!found) throw new Error("package.json not found");
+  return JSON.parse(readFileSync(found, "utf8"));
 }
 
 export const DEFAULTS: EdgeWellConfig = {

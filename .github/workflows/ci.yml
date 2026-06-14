@@ -27,16 +27,18 @@ jobs:
           cache: pnpm
       - name: Install
         run: pnpm install --frozen-lockfile
+      - name: Build
+        run: pnpm build
       - name: Type check
         run: pnpm typecheck
       - name: Run tests
         run: pnpm test
       - name: Smoke CLI
         run: |
-          node --import tsx/esm bin/edgewell.js version
-          node --import tsx/esm bin/edgewell.js help | head -5
-          node --import tsx/esm bin/edgewell.js status
-          node --import tsx/esm bin/edgewell.js doctor
-          node --import tsx/esm bin/edgewell.js models list
-          node --import tsx/esm bin/edgewell.js config > /dev/null
-          node --import tsx/esm bin/edgewell.js redact text "my email is ada@example.com" | grep REDACTED
+          node dist/bin/edgewell.js version
+          node dist/bin/edgewell.js help | head -5
+          node dist/bin/edgewell.js status
+          node dist/bin/edgewell.js doctor
+          node dist/bin/edgewell.js models list
+          node dist/bin/edgewell.js config > /dev/null
+          node dist/bin/edgewell.js redact text "my email is ada@example.com" | grep REDACTED
