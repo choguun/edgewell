@@ -6,6 +6,11 @@ node_modules/
 data/*.bin
 data/*.gguf
 data/*.jsonl
+data/*.jsonl.bak
+data/sample_journal.txt
+data/rag/vectors.json
+data/rag/chunks.json
+data/profile.json
 .cache/
 dist/
 build/
