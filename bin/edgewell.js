@@ -1,14 +1,12 @@
 #!/usr/bin/env node
-// EdgeWell CLI entry. Dispatches to a subcommand module.
+// EdgeWell CLI shim. Registers the tsx ESM loader so we can import
+// the TypeScript source at runtime, then delegates to bin/edgewell.ts.
+// Kept as .js so `package.json#bin` resolves to a real file even
+// before `pnpm build` has run.
 
-import { createEdgeWell } from "../src/index.js";
-import { dispatch } from "../src/dispatch.js";
+import { register } from "node:module";
+import { pathToFileURL } from "node:url";
 
-const ew = createEdgeWell();
-const [, , cmd = "help", ...rest] = process.argv;
-try {
-  await dispatch(cmd, rest, ew);
-} catch (err) {
-  console.error("error:", err?.message ?? err);
-  process.exit(1);
-}
+register("tsx/esm", pathToFileURL("./"));
+
+await import("./edgewell.ts");
