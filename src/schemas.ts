@@ -1,8 +1,9 @@
-// @ts-nocheck
 // Schemas for our own data records. Used by JsonlStore and the
 // encryption layer to validate before writing.
 
-export const JOURNAL_SCHEMA = {
+import type { SchemaNode } from "./schema.js";
+
+export const JOURNAL_SCHEMA: SchemaNode = {
   type: "object",
   required: ["kind", "text"],
   properties: {
@@ -14,7 +15,7 @@ export const JOURNAL_SCHEMA = {
   },
 };
 
-export const EXPENSE_SCHEMA = {
+export const EXPENSE_SCHEMA: SchemaNode = {
   type: "object",
   required: ["kind", "amount", "category"],
   properties: {
@@ -27,7 +28,7 @@ export const EXPENSE_SCHEMA = {
   },
 };
 
-export const RAG_CHUNK_SCHEMA = {
+export const RAG_CHUNK_SCHEMA: SchemaNode = {
   type: "object",
   required: ["id", "source", "text", "tokens", "tf"],
   properties: {
@@ -39,7 +40,7 @@ export const RAG_CHUNK_SCHEMA = {
   },
 };
 
-export const PROFILE_SCHEMA = {
+export const PROFILE_SCHEMA: SchemaNode = {
   type: "object",
   required: ["name"],
   properties: {

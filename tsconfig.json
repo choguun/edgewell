@@ -29,13 +29,13 @@
   "include": [
     "src/**/*.ts",
     "bin/**/*.ts",
-    "scripts/**/*.mts"
+    "scripts/**/*.mts",
+    "test/**/*.ts"
   ],
   "exclude": [
     "node_modules",
     "dist",
     "data",
-    "examples",
-    "test"
+    "examples"
   ]
 }
