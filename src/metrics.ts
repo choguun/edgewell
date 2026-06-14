@@ -1,37 +1,40 @@
-// @ts-nocheck
 // Tiny in-process metrics. Counters and histograms with quantiles.
 // Not Prometheus-compatible on purpose - we just need something
 // simple that can be JSON-dumped to a /metrics endpoint and
 // inspected with `edgewell status`.
 
-// Linear-interpolation quantile. The old "q" function used
-// `Math.floor(p * N)` which biased quantiles upward: for
-// `q([1,2], 0.5)` it returned 2 (the max) instead of 1.5 (the
-// median). The new function uses the standard R-7 quantile:
-// `pos = (N - 1) * p; sorted[floor(pos)] + (pos - floor(pos)) *
-// (sorted[ceil(pos)] - sorted[floor(pos)])`.
-function quantile(sorted, p) {
+export type Tags = Record<string, string | number | boolean>;
+
+/** Linear-interpolation quantile (R-7). Returns 0 for an empty array. */
+function quantile(sorted: number[], p: number): number {
   if (sorted.length === 0) return 0;
   const pos = (sorted.length - 1) * p;
   const base = Math.floor(pos);
   const rest = pos - base;
-  if (sorted[base + 1] !== undefined) {
-    return sorted[base] + rest * (sorted[base + 1] - sorted[base]);
+  const next = sorted[base + 1];
+  if (next !== undefined) {
+    return (sorted[base] ?? 0) + rest * (next - (sorted[base] ?? 0));
   }
-  return sorted[base];
+  return sorted[base] ?? 0;
 }
 
-function isNonNegativeFinite(n) {
-  return typeof n === "number" && Number.isFinite(n) && n >= 0;
+export interface MetricsSnapshot {
+  counters: Record<string, number>;
+  histograms: Record<
+    string,
+    { count: number; min: number; max: number; mean: number; p50: number; p90: number; p99: number }
+  >;
+}
+
+interface HistogramState {
+  values: number[];
 }
 
 export class Metrics {
-  constructor() {
-    this.counters = new Map();
-    this.histograms = new Map();
-  }
+  public counters: Map<string, number> = new Map();
+  public histograms: Map<string, HistogramState> = new Map();
 
-  inc(name, n = 1, tags = {}) {
+  inc(name: string, n: number = 1, tags: Tags = {}): void {
     if (typeof name !== "string" || name.length === 0) {
       throw new Error("inc requires a non-empty string name");
     }
@@ -46,7 +49,7 @@ export class Metrics {
     this.counters.set(key, (this.counters.get(key) ?? 0) + n);
   }
 
-  observe(name, value, tags = {}) {
+  observe(name: string, value: number, tags: Tags = {}): void {
     if (typeof name !== "string" || name.length === 0) {
       throw new Error("observe requires a non-empty string name");
     }
@@ -64,9 +67,9 @@ export class Metrics {
     h.values.push(value);
   }
 
-  snapshot() {
-    const counters = Object.fromEntries(this.counters);
-    const histograms = {};
+  snapshot(): MetricsSnapshot {
+    const counters: Record<string, number> = Object.fromEntries(this.counters);
+    const histograms: MetricsSnapshot["histograms"] = {};
     for (const [k, h] of this.histograms) {
       // Filter NaN / non-finite values for the snapshot stats
       // so the JSON output never contains `null` for `min` /
@@ -85,20 +88,20 @@ export class Metrics {
     return { counters, histograms };
   }
 
-  reset() {
+  reset(): void {
     this.counters.clear();
     this.histograms.clear();
   }
 
-  _key(name, tags) {
+  _key(name: string, tags: Tags): string {
     const keys = Object.keys(tags).sort();
     if (keys.length === 0) return name;
     return `${name}{${keys.map((k) => `${k}=${tags[k]}`).join(",")}}`;
   }
 }
 
-// Helper: time an async function and record the duration in ms.
-export async function timed(metrics, name, tags, fn) {
+/** Time an async function and record the duration in ms. */
+export async function timed<T>(metrics: Metrics, name: string, tags: Tags, fn: () => Promise<T>): Promise<T> {
   if (typeof fn !== "function") {
     throw new Error("timed requires a function");
   }

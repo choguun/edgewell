@@ -97,13 +97,17 @@ export function startServer({
             "x-accel-buffering": "no",
           });
           let tokens = 0;
+          // Note: timing the stream with `timed()` would wrap the
+          // async iterable in a Promise, which `for await` can't
+          // consume. Time it manually instead and observe the
+          // duration once the stream is fully drained.
+          const streamStart = Date.now();
           try {
-            for await (const tok of await timed(m, "p2p_server_stream_ms", {}, () =>
-              llm.stream({ system, user, history, maxTokens, temperature }),
-            )) {
+            for await (const tok of llm.stream({ system, user, history, maxTokens, temperature })) {
               tokens++;
               res.write(JSON.stringify({ token: tok }) + "\n");
             }
+            m.observe("p2p_server_stream_ms", Date.now() - streamStart, {});
             res.write(JSON.stringify({ done: true }) + "\n");
             m.inc("p2p_server_tokens_total", tokens);
             log.info("completion streamed", { tokens, ms: Date.now() - t0 });
