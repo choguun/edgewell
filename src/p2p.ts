@@ -265,28 +265,19 @@ export interface DelegatingLLMOptions {
 export class DelegatingLLM {
   public peer: PeerClient;
   public local: LLM;
-  /** Hold the typed reference so we can still call load/unload. */
-  private localImpl: EdgeWellLLM;
 
   constructor({ peer, localModel, sdkExports }: DelegatingLLMOptions) {
     this.peer = peer;
-    // qvac.ts's EdgeWellLLM constructor types are not exported (it
-    // uses destructure-without-annotations inside @ts-nocheck), so
-    // the call-site type is inferred narrowly. Cast at the boundary.
-    this.localImpl = new EdgeWellLLM({
-      model: localModel,
-      sdkExports: (sdkExports ?? null) as null,
-    } as ConstructorParameters<typeof EdgeWellLLM>[0]);
-    this.local = this.localImpl as unknown as LLM;
+    this.local = new EdgeWellLLM({ model: localModel, sdkExports: (sdkExports ?? null) as never });
   }
 
   async load(): Promise<string | null> {
     // Best-effort warm local; peer is implicit on first call.
-    return this.localImpl.load();
+    return (this.local as EdgeWellLLM).load();
   }
 
   async unload(): Promise<void> {
-    return this.localImpl.unload();
+    return (this.local as EdgeWellLLM).unload();
   }
 
   private async *_withFallback(body: PromptInput): AsyncIterable<string> {
