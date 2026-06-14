@@ -1,10 +1,15 @@
-// @ts-nocheck
 // Best-effort PII redaction. Used to scrub user text before
 // sending to a peer model. Replaces common patterns with [REDACTED]
 // markers so the rest of the prompt structure stays intact.
 
-const RULES = [
-  // Most specific first so generic patterns don't get there first.
+interface RedactRule {
+  kind: string;
+  re: RegExp;
+  label: string;
+}
+
+// Most specific first so generic patterns don't get there first.
+const RULES: RedactRule[] = [
   // Long digit runs that look like credit-card or national-id numbers.
   // We lowered the threshold from 13 to 10 so 10+ digit numeric
   // runs (credit cards, ISINs, IBANs) are redacted in one go
@@ -33,11 +38,15 @@ const RULES = [
   { kind: "phone", re: /(?:\+\d{1,3}[\s-]?)?(?:\(\d{2,4}\)|\d{2,4})[\s-]\d{3,4}[\s-]\d{3,4}\b/g, label: "PHONE" },
 ];
 
-export function redact(text, { tags = null } = {}) {
+export interface RedactOptions {
+  tags?: string[] | null;
+}
+
+export function redact(text: string, { tags = null }: RedactOptions = {}): string {
   if (typeof text !== "string") return text;
   let out = text;
   for (const rule of RULES) {
-    out = out.replace(rule.re, (m) => `[REDACTED_${rule.label}]`);
+    out = out.replace(rule.re, () => `[REDACTED_${rule.label}]`);
   }
   if (tags && tags.length) {
     for (const t of tags) {
@@ -54,13 +63,16 @@ export function redact(text, { tags = null } = {}) {
   return out;
 }
 
-export function redactRecord(rec, { tags = null } = {}) {
+export function redactRecord<T extends Record<string, unknown>>(
+  rec: T,
+  { tags = null }: RedactOptions = {},
+): T {
   if (rec == null || typeof rec !== "object") return rec;
-  const out = {};
+  const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(rec)) {
     if (typeof v === "string") out[k] = redact(v, { tags });
     else if (Array.isArray(v)) out[k] = v.map((x) => (typeof x === "string" ? redact(x, { tags }) : x));
     else out[k] = v;
   }
-  return out;
+  return out as T;
 }
