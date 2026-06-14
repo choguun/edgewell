@@ -1,4 +1,3 @@
-// @ts-nocheck
 // ToolAgent wraps a normal agent and adds a tool-calling loop:
 // 1. Build a system prompt that lists available tools.
 // 2. Ask the model.
@@ -14,25 +13,63 @@
 
 import { ToolRegistry } from "./tools.js";
 
+export interface ChatMessage {
+  role: "user" | "assistant" | "system";
+  content: string;
+}
+
+export interface LLM {
+  prompt(input: {
+    system?: string;
+    user: string;
+    history?: ChatMessage[];
+    maxTokens?: number;
+    temperature?: number;
+  }): Promise<string>;
+}
+
+export interface ToolCallRecord {
+  name: string;
+  params: Record<string, unknown>;
+}
+
+export interface ToolAgentAskResult {
+  reply: string;
+  toolCalls: ToolCallRecord[];
+}
+
+export interface ToolAgentOptions {
+  llm: LLM;
+  tools?: ToolRegistry;
+  ctx?: Record<string, unknown>;
+  maxRounds?: number;
+  baseSystem?: string;
+}
+
 const TOOL_TAG = /<tool\s+name="([a-zA-Z0-9_-]+)"\s*>([\s\S]*?)<\/tool>/g;
 
-function extractToolCalls(text) {
-  const calls = [];
-  const bad = [];
-  let m;
+interface ExtractedCalls {
+  calls: ToolCallRecord[];
+  bad: Array<{ name: string; error: string; raw?: string }>;
+}
+
+function extractToolCalls(text: string): ExtractedCalls {
+  const calls: ToolCallRecord[] = [];
+  const bad: ExtractedCalls["bad"] = [];
+  let m: RegExpExecArray | null;
   TOOL_TAG.lastIndex = 0;
   while ((m = TOOL_TAG.exec(text)) !== null) {
-    const name = m[1];
-    const raw = m[2].trim();
-    let params = {};
+    const name = m[1] ?? "";
+    const raw = (m[2] ?? "").trim();
+    let params: Record<string, unknown> = {};
     if (raw) {
       try {
-        params = JSON.parse(raw);
+        params = JSON.parse(raw) as Record<string, unknown>;
       } catch (err) {
         // Don't silently coerce bad JSON to a magic `expression`
         // key — record it as a malformed call so the loop can
         // surface the error to the model.
-        bad.push({ name, error: `malformed JSON in tool call: ${err.message}`, raw });
+        bad.push({ name, error: `malformed JSON in tool call: ${(err as Error).message}`, raw });
         continue;
       }
     }
@@ -41,15 +78,28 @@ function extractToolCalls(text) {
   return { calls, bad };
 }
 
-function stableStringify(x) {
+function stableStringify(x: unknown): string {
   if (x === null || typeof x !== "object") return JSON.stringify(x);
   if (Array.isArray(x)) return "[" + x.map(stableStringify).join(",") + "]";
-  const keys = Object.keys(x).sort();
-  return "{" + keys.map((k) => JSON.stringify(k) + ":" + stableStringify(x[k])).join(",") + "}";
+  const keys = Object.keys(x as Record<string, unknown>).sort();
+  return "{" + keys.map((k) => JSON.stringify(k) + ":" + stableStringify((x as Record<string, unknown>)[k])).join(",") + "}";
 }
 
 export class ToolAgent {
-  constructor({ llm, tools = new ToolRegistry(), ctx = {}, maxRounds = 3, baseSystem = "" } = {}) {
+  public llm: LLM;
+  public tools: ToolRegistry;
+  public ctx: Record<string, unknown>;
+  public maxRounds: number;
+  public baseSystem: string;
+
+  constructor({
+    llm,
+    tools = new ToolRegistry(),
+    ctx = {},
+    maxRounds = 3,
+    baseSystem = "",
+  }: ToolAgentOptions = {} as ToolAgentOptions) {
+    if (!llm) throw new Error("ToolAgent requires an llm");
     this.llm = llm;
     this.tools = tools;
     this.ctx = ctx;
@@ -57,16 +107,16 @@ export class ToolAgent {
     this.baseSystem = baseSystem;
   }
 
-  _systemPrompt() {
+  _systemPrompt(): string {
     const toolBlock = this.tools.describeForPrompt();
     return `${this.baseSystem}\n\nAvailable tools (call by emitting <tool name="...">{json params}</tool>):\n${toolBlock}\n\nIf you do not need a tool, answer directly without any tool tags.`;
   }
 
-  async ask(question, history = []) {
-    let messages = history.slice();
+  async ask(question: string, history: ChatMessage[] = []): Promise<ToolAgentAskResult> {
+    const messages = history.slice();
     let last = question;
     let lastReply = "";
-    const allCalls = [];
+    const allCalls: ToolCallRecord[] = [];
     // Hash of the last round's resolved tool calls. If the same
     // exact call set comes back unchanged, stop early so we don't
     // burn the whole budget on a model that's stuck.
@@ -80,19 +130,12 @@ export class ToolAgent {
       });
       lastReply = reply;
       const { calls, bad } = extractToolCalls(reply);
-      // Detect: unclosed <tool> tag (opens but never closes). The
-      // regex won't match it, so we just record that one existed.
-      const unclosedMatch = /<tool\s+name="([a-zA-Z0-9_-]+)"\s*>[^<]*(?<!<\/)>(?![\s\S]*<\/tool>)/.exec(reply);
       // Simpler: if the reply contains a "<tool name=" without a
       // matching closing tag anywhere, treat the whole tag as bad.
       const hasOpenTag = /<tool\s+name="[a-zA-Z0-9_-]+"\s*>/.test(reply);
       const hasCloseTag = /<\/tool>/.test(reply);
       if (hasOpenTag && !hasCloseTag) {
         bad.push({ name: "(unclosed)", error: "tool tag opened but never closed" });
-      } else if (unclosedMatch) {
-        // (already covered by the simpler check above; kept for
-        //  defence in depth in case the regex above misses)
-        bad.push({ name: unclosedMatch[1], error: "tool tag opened but never closed" });
       }
       allCalls.push(...calls);
       if (calls.length === 0 && bad.length === 0) {
@@ -100,13 +143,14 @@ export class ToolAgent {
       }
 
       // Execute the well-formed calls.
-      const results = [];
+      type Result = { name: string; ok: boolean; result?: unknown; error?: string };
+      const results: Result[] = [];
       for (const c of calls) {
         try {
           const r = await this.tools.call(c.name, c.params, this.ctx);
           results.push({ name: c.name, ok: true, result: r });
         } catch (err) {
-          results.push({ name: c.name, ok: false, error: String(err?.message ?? err) });
+          results.push({ name: c.name, ok: false, error: String((err as Error)?.message ?? err) });
         }
       }
       // Surface malformed/unclosed tags as explicit results so the
