@@ -12,21 +12,9 @@
 // result so the model can self-correct.
 
 import { ToolRegistry } from "./tools.js";
+import type { ChatMessage, LLM } from "./llm-types.js";
 
-export interface ChatMessage {
-  role: "user" | "assistant" | "system";
-  content: string;
-}
-
-export interface LLM {
-  prompt(input: {
-    system?: string;
-    user: string;
-    history?: ChatMessage[];
-    maxTokens?: number;
-    temperature?: number;
-  }): Promise<string>;
-}
+export type { ChatMessage, LLM };
 
 export interface ToolCallRecord {
   name: string;

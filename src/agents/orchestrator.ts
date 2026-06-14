@@ -1,29 +1,13 @@
 // Multi-agent orchestrator: routes user questions to the right specialist
 // (health, finance, or a general/lifestyle one) and can chain them.
 
+import type { ChatMessage, LLM } from "../llm-types.js";
+
 export type RouteAgent = "health" | "finance" | "lifestyle";
 
 export interface RouteResult {
   agent: RouteAgent;
   reason: string;
-}
-
-export interface ChatMessage {
-  role: "system" | "user" | "assistant";
-  content: string;
-}
-
-export interface PromptInput {
-  system?: string;
-  user: string;
-  history?: ChatMessage[];
-  maxTokens?: number;
-  temperature?: number;
-}
-
-export interface LLM {
-  prompt(input: PromptInput): Promise<string>;
-  stream(input: PromptInput): AsyncIterable<string>;
 }
 
 export interface SpecialistAgent {
