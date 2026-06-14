@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Companion entry point. Re-exports the public surface of the v3.0.0
 // companion subsystem: auth tokens, router, HTTP server, mDNS stub.
 
