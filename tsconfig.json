@@ -10,8 +10,8 @@
     "sourceMap": true,
 
     "strict": true,
-    "noImplicitAny": false,
-    "noUncheckedIndexedAccess": false,
+    "noImplicitAny": true,
+    "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
     "noFallthroughCasesInSwitch": true,
     "noPropertyAccessFromIndexSignature": false,
