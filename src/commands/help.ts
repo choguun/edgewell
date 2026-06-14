@@ -1,4 +1,3 @@
-// @ts-nocheck
 // `edgewell help` shows the full command surface. The hand-picked
 // list of "highlighted" commands is augmented at runtime with the
 // complete map from the dispatcher so every wired command is
@@ -6,10 +5,12 @@
 
 import { c } from "../cli.js";
 
+type Highlight = readonly [name: string, description: string];
+
 // Hand-curated highlights: every command a typical user is likely
 // to discover via docs or `tab`-completion. Each entry pairs a
 // display name with a one-line description.
-const HIGHLIGHTS = [
+const HIGHLIGHTS: readonly Highlight[] = [
   ["chat", "Interactive REPL chat (routes to specialists)"],
   ["ask <question>", "One-shot question, streamed"],
   ["serve", "Start a P2P server hosting the delegate model"],
@@ -71,7 +72,7 @@ const HIGHLIGHTS = [
 ];
 
 // Optional: a sub-arg can be passed to focus on a single command.
-export async function helpCommand(args = []) {
+export async function helpCommand(args: string[] = []): Promise<void> {
   // Lazy-load the dispatcher map to keep the import cycle one-way.
   const { COMMAND_MAP: MAP } = await import("../dispatch.js");
   const target = args[0];
@@ -84,7 +85,7 @@ export async function helpCommand(args = []) {
     console.log(`run \`edgewell help\` to see the full list`);
     return;
   }
-  const lines = [];
+  const lines: string[] = [];
   lines.push(`${c.bold("EdgeWell")} - private on-device health & finance coach (powered by QVAC)`);
   lines.push("");
   lines.push(`${c.bold("Usage:")}`);
@@ -97,7 +98,7 @@ export async function helpCommand(args = []) {
     lines.push(`  ${c.cyan(name.padEnd(longest))}  ${desc}`);
   }
   // Count of additional commands not in the highlight list.
-  const known = new Set(HIGHLIGHTS.map(([n]) => n.split(/\s|<|\[/)[0]));
+  const known = new Set(HIGHLIGHTS.map(([n]) => n.split(/\s|<|\[/)[0] ?? ""));
   const extras = Object.keys(MAP)
     .filter((k) => !k.startsWith("-") && !known.has(k) && k !== "plugins")
     .sort();
