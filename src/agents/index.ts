@@ -1,4 +1,3 @@
-// @ts-nocheck
 // EdgeWell v3.0.0 agent bundle. The original HealthAgent,
 // FinanceAgent, and Orchestrator are joined by lifestyle agents
 // (Sleep, Nutrition, Hydration, Activity). Every agent exports a
