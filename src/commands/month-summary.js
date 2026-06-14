@@ -5,9 +5,14 @@
 import { c, header } from "../cli.js";
 
 export async function monthSummaryCommand(args, ew) {
-  const month = args[0];
-  if (!month || !/^\d{4}-\d{2}$/.test(month)) {
-    console.error("usage: edgewell month-summary <YYYY-MM>");
+  let month = args[0];
+  if (!month) {
+    // Default to the current month in UTC.
+    const now = new Date();
+    month = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
+  }
+  if (!/^\d{4}-\d{2}$/.test(month)) {
+    console.error("usage: edgewell month-summary [YYYY-MM]");
     process.exit(2);
   }
   header(`Month summary: ${month}`);

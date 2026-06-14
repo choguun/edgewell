@@ -16,6 +16,6 @@ export async function journalRestoreCommand(args, ew) {
     process.exit(2);
   }
   const original = all[id];
-  await ew.journal.append({ _ts: new Date().toISOString(), text: original.text, restoredFrom: id });
+  await ew.journal.append({ kind: "journal", _ts: new Date().toISOString(), text: original.text, restoredFrom: id });
   console.log(c.green(`entry ${id} marked restored`));
 }

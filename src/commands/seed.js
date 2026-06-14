@@ -45,14 +45,14 @@ export async function seedCommand(args, ew) {
     const text = PHRASES[Math.floor(r() * PHRASES.length)];
     const k = `${day}|${text}`;
     if (!jKeys.has(k)) {
-      await ew.journal.append({ _ts: day, text, tags: ["seed"] });
+      await ew.journal.append({ kind: "journal", _ts: day, text, tags: ["seed"] });
       j++;
     }
-    const amount = Number((r() * 30 + 1).toFixed(2));
+    const amount = Number(Math.max(0, Math.min(1_000_000_000, r() * 30 + 1)).toFixed(2));
     const cat = CATEGORIES[Math.floor(r() * CATEGORIES.length)];
     const ek = `${day}|${amount}|${cat}`;
     if (!eKeys.has(ek)) {
-      await ew.expenses.append({ _ts: day, amount, category: cat, note: "seed" });
+      await ew.expenses.append({ kind: "expense", _ts: day, amount, category: cat, note: "seed" });
       e++;
     }
   }

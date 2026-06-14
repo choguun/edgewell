@@ -4,8 +4,8 @@
 // "latest known" version is updated by hand when a new
 // release is tagged.
 
-import { readFile } from "node:fs/promises";
 import { c } from "../cli.js";
+import { readPackageJson } from "../config.js";
 
 const LATEST_KNOWN = "3.0.0";
 
@@ -20,7 +20,7 @@ function cmp(a, b) {
 }
 
 export async function versionCheckCommand(_args) {
-  const pkg = JSON.parse(await readFile("./package.json", "utf8"));
+  const pkg = readPackageJson();
   const cmpRes = cmp(pkg.version, LATEST_KNOWN);
   if (cmpRes < 0) {
     console.log(c.yellow(`you are on ${pkg.version}, latest known is ${LATEST_KNOWN}`));

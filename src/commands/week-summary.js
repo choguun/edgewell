@@ -17,9 +17,19 @@ function startOfIsoWeek(year, week) {
 }
 
 export async function weekSummaryCommand(args, ew) {
-  const w = args[0];
-  if (!w || !/^\d{4}-W\d{2}$/.test(w)) {
-    console.error("usage: edgewell week-summary <YYYY-Www>");
+  let w = args[0];
+  if (!w) {
+    // Default to the current ISO week.
+    const now = new Date();
+    const thursday = new Date(now);
+    thursday.setUTCDate(now.getUTCDate() + (4 - (now.getUTCDay() || 7)));
+    const year = thursday.getUTCFullYear();
+    const jan4 = new Date(Date.UTC(year, 0, 4));
+    const week = 1 + Math.floor((thursday - jan4) / (7 * 86400_000));
+    w = `${year}-W${String(week).padStart(2, "0")}`;
+  }
+  if (!/^\d{4}-W\d{2}$/.test(w)) {
+    console.error("usage: edgewell week-summary [YYYY-Www]");
     process.exit(2);
   }
   const [yearStr, weekStr] = w.split("-W");

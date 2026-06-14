@@ -3,11 +3,11 @@
 // of available subcommands.
 
 import { c, header } from "../cli.js";
-import { readFile } from "node:fs/promises";
+import { readPackageJson } from "../config.js";
 
 export async function infoCommand(args, ew) {
   header("EdgeWell info");
-  const pkg = JSON.parse(await readFile("./package.json", "utf8"));
+  const pkg = readPackageJson();
   const journal = await ew.journal.readAll();
   const expenses = await ew.expenses.readAll();
   await ew.rag._ensure();

@@ -21,7 +21,7 @@ export async function retagCommand(args, ew) {
     const e = all[i];
     if ((e.tags ?? []).includes(from)) {
       const newTags = Array.from(new Set([...(e.tags ?? []).filter((t) => t !== from), to]));
-      await ew.journal.append({ _ts: e._ts, text: e.text, tags: newTags, renamedFrom: from, renamedTo: to });
+      await ew.journal.append({ kind: "journal", _ts: e._ts, text: e.text, tags: newTags, renamedFrom: from, renamedTo: to });
       n++;
     }
   }

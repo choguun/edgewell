@@ -14,8 +14,14 @@ const TOOLS = {
       properties: { expression: { type: "string", minLength: 1, maxLength: 200 } },
     },
     run({ expression }) {
-      if (!/^[\d\s+\-*/().,]+$/.test(expression)) {
+      // Strict whitelist: digits, whitespace, parens, and the four
+      // basic operators. The comma operator is intentionally excluded
+      // because `(1,2)` returning `2` is surprising for a calculator.
+      if (!/^[\d\s+\-*/().]+$/.test(expression)) {
         throw new Error("expression has disallowed characters");
+      }
+      if (expression.replace(/[\s]/g, "").length === 0) {
+        throw new Error("expression is empty");
       }
       // eslint-disable-next-line no-new-func
       const fn = new Function(`"use strict"; return (${expression});`);
@@ -45,7 +51,7 @@ const TOOLS = {
         topK: { type: "integer", minimum: 1, maximum: 10 },
       },
     },
-    async run({ query, topK = 3 }, ctx) {
+    async run({ query, topK = 4 }, ctx) {
       const rag = ctx?.rag;
       if (!rag) return { hits: [] };
       const hits = await rag.search(query, topK);

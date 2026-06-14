@@ -856,7 +856,6 @@ const MAP = {
   "expenses-entries-hour-N": expensesEntriesHourNCommand,
   "journal-entries-month-N": journalEntriesMonthNCommand,
   "expenses-entries-month-N": expensesEntriesMonthNCommand,
-  "journal-entries-year-N": journalEntriesYearNCommand,
   plugins: (args, ew) => {
     if (args[0] === "list") return pluginsListCommand(args.slice(1), ew);
     if (args[0] === "run") return pluginsRunCommand(args.slice(1), ew);
@@ -872,3 +871,5 @@ export async function dispatch(cmd, rest, ew) {
   }
   return fn(rest, ew);
 }
+
+export { MAP as COMMAND_MAP };

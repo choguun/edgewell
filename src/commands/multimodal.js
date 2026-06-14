@@ -29,6 +29,7 @@ export async function multimodalCommand(args, ew) {
   }
   if (toJournal) {
     await ew.journal.append({
+      kind: "journal",
       _ts: new Date().toISOString(),
       text: result.text,
       tags: ["multimodal", result.kind],

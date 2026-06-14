@@ -2,13 +2,12 @@
 // in package.json. Useful for security audits and supply-chain
 // reviews.
 
-import { readFile } from "node:fs/promises";
 import { c, header } from "../cli.js";
+import { readPackageJson } from "../config.js";
 
 export async function depsCommand(_args, _ew) {
   header("EdgeWell dependencies");
-  const raw = await readFile("./package.json", "utf8");
-  const pkg = JSON.parse(raw);
+  const pkg = readPackageJson();
   const runtime = pkg.dependencies ?? {};
   const dev = pkg.devDependencies ?? {};
   if (Object.keys(runtime).length > 0) {

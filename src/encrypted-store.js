@@ -48,15 +48,40 @@ export class EncryptedJsonlStore {
     return this._writeLock;
   }
 
+  // Serialise the full read-modify-write cycle so concurrent
+  // appends from multiple callers do not lose records.
+  // The previous implementation only locked the underlying
+  // fs.writeFile, so two appends that started at the same time
+  // would both read the original file, both push, and only the
+  // last write would survive — the other record was silently lost.
+  async _withLock(fn) {
+    let release;
+    const next = new Promise((res) => { release = res; });
+    const prev = this._lock || Promise.resolve();
+    this._lock = next;
+    try {
+      await prev;
+      return await fn();
+    } finally {
+      release();
+    }
+  }
+
   async append(record) {
+    if (record === null || typeof record !== "object") {
+      throw new Error("append requires a non-null object record");
+    }
     if (this.schema) {
       const candidate = { ...record };
       if (!("_ts" in candidate)) candidate._ts = new Date().toISOString();
       validateRecord(candidate, this.schema);
     }
-    const lines = await this._readLines();
-    lines.push(JSON.stringify({ ...record, _ts: record._ts ?? new Date().toISOString() }));
-    await this._writeLines(lines);
+    const line = JSON.stringify({ ...record, _ts: record._ts ?? new Date().toISOString() });
+    await this._withLock(async () => {
+      const lines = await this._readLines();
+      lines.push(line);
+      await this._writeLines(lines);
+    });
     return record;
   }
 
@@ -83,7 +108,9 @@ export class EncryptedJsonlStore {
   }
 
   async clear() {
-    await this._writeLines([]);
+    await this._withLock(async () => {
+      await this._writeLines([]);
+    });
   }
 }
 

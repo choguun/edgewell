@@ -23,6 +23,10 @@ function checkType(value, type) {
 }
 
 function validate(value, schema, path = "$", errors = []) {
+  if (schema == null || typeof schema !== "object") {
+    errors.push(`${path}: schema is missing or not an object`);
+    return;
+  }
   if (schema.anyOf) {
     let ok = false;
     const sub = [];

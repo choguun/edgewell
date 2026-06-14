@@ -27,16 +27,23 @@ function average(xs) {
 
 function summariseKind(events) {
   if (events.length === 0) return { count: 0 };
-  const values = events.map((e) => e.value);
-  const min = Math.min(...values);
-  const max = Math.max(...values);
+  // Filter out malformed events (missing or non-numeric value, or
+  // missing ts). Without this, Math.min/max produce NaN and the
+  // first/last fields are undefined, which then leak into the
+  // sensor summary in confusing ways.
+  const valid = events.filter(
+    (e) => typeof e.value === "number" && Number.isFinite(e.value) && typeof e.ts === "string",
+  );
+  if (valid.length === 0) return { count: 0, invalid: events.length };
+  const values = valid.map((e) => e.value);
   return {
-    count: events.length,
-    min,
-    max,
+    count: valid.length,
+    invalid: events.length - valid.length,
+    min: Math.min(...values),
+    max: Math.max(...values),
     avg: Number(average(values).toFixed(2)),
-    first: events[0].ts,
-    last: events[events.length - 1].ts,
+    first: valid[0].ts,
+    last: valid[valid.length - 1].ts,
   };
 }
 
@@ -53,9 +60,11 @@ export function summariseEvents(events) {
 }
 
 export function toJournalLine(summary, date = new Date()) {
+  if (!summary || typeof summary !== "object") return "";
   const parts = [];
   for (const [k, s] of Object.entries(summary)) {
-    if (s.count === 0) continue;
+    // Defensive: each entry must be an object with a numeric count.
+    if (!s || typeof s !== "object" || typeof s.count !== "number" || s.count === 0) continue;
     parts.push(`${k} ${s.count}× (avg ${s.avg}, ${s.min}–${s.max})`);
   }
   if (parts.length === 0) return "";

@@ -28,6 +28,10 @@ import { pathToFileURL } from "node:url";
 
 const PLUGIN_SUFFIX = ".plugin.js";
 
+// Per-plugin hook timeout (ms). Default 5s; override via env var.
+const _envTimeout = Number(process.env.EDGEWELL_PLUGIN_TIMEOUT_MS ?? 5000);
+const PLUGIN_TIMEOUT_MS = Number.isFinite(_envTimeout) && _envTimeout > 0 ? _envTimeout : 5000;
+
 function isPluginFile(name) {
   return name.endsWith(PLUGIN_SUFFIX);
 }
@@ -36,22 +40,51 @@ function isPluginFile(name) {
 // context is built up incrementally as each hook fires so plugins
 // can register embeddings, agents, and routes for later plugins to
 // see.
+// Race a promise against a timer. If `ms` elapses first, rejects
+// with an Error so the caller can mark the plugin as timed out.
+function withTimeout(promise, ms, label) {
+  let timer;
+  return Promise.race([
+    promise.finally(() => clearTimeout(timer)),
+    new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    }),
+  ]);
+}
+
 export async function runPluginHooks(plugin, ctx) {
   const hooks = plugin.hooks ?? {};
+  const name = plugin.name ?? "<unnamed plugin>";
   if (typeof hooks.onLoad === "function") {
-    await hooks.onLoad({ ew: ctx.ew, log: ctx.log });
+    await withTimeout(
+      Promise.resolve().then(() => hooks.onLoad({ ew: ctx.ew, log: ctx.log })),
+      PLUGIN_TIMEOUT_MS,
+      `plugin "${name}" onLoad`,
+    );
   }
   if (typeof hooks.registerEmbedder === "function") {
     const register = (entry) => ctx.embedders.set(entry.name, entry);
-    await hooks.registerEmbedder({ register, ew: ctx.ew });
+    await withTimeout(
+      Promise.resolve().then(() => hooks.registerEmbedder({ register, ew: ctx.ew })),
+      PLUGIN_TIMEOUT_MS,
+      `plugin "${name}" registerEmbedder`,
+    );
   }
   if (typeof hooks.registerAgent === "function") {
     const register = (entry) => ctx.agents.set(entry.name, entry.agent);
-    await hooks.registerAgent({ register, ew: ctx.ew });
+    await withTimeout(
+      Promise.resolve().then(() => hooks.registerAgent({ register, ew: ctx.ew })),
+      PLUGIN_TIMEOUT_MS,
+      `plugin "${name}" registerAgent`,
+    );
   }
   if (typeof hooks.registerRoute === "function") {
     const register = (entry) => ctx.routes.push(entry);
-    await hooks.registerRoute({ register, ew: ctx.ew });
+    await withTimeout(
+      Promise.resolve().then(() => hooks.registerRoute({ register, ew: ctx.ew })),
+      PLUGIN_TIMEOUT_MS,
+      `plugin "${name}" registerRoute`,
+    );
   }
 }
 
@@ -90,7 +123,11 @@ export async function loadPlugins(dir, ew, opts = {}) {
       const factory = mod.default ?? mod.plugin;
       if (typeof factory === "function") {
         // v2.0.0 style.
-        await factory(ew);
+        await withTimeout(
+          Promise.resolve().then(() => factory(ew)),
+          PLUGIN_TIMEOUT_MS,
+          `plugin "${e.name}" factory`,
+        );
         loaded.push({ name: e.name, ok: true, kind: "function" });
       } else if (factory && typeof factory === "object") {
         // v3.0.0 style.

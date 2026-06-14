@@ -27,7 +27,15 @@ export async function watchCommand(args, ew) {
   let jSize = await fileSize(journal);
   let eSize = await fileSize(expenses);
   console.log(c.dim(`watching ${journal} and ${expenses} every ${intervalMs}ms`));
+  let stopping = false;
+  const stop = () => { stopping = true; };
+  process.on("SIGINT", stop);
+  process.on("SIGTERM", stop);
   for (;;) {
+    if (stopping) {
+      console.log(c.dim("\nstopped watching."));
+      return;
+    }
     await new Promise((r) => setTimeout(r, intervalMs));
     const jNew = await fileSize(journal);
     const eNew = await fileSize(expenses);

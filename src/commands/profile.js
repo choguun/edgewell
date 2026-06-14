@@ -12,10 +12,40 @@ export async function profileCommand(args, ew) {
       process.exit(2);
     }
     const cur = await ew.profile.load();
-    let parsed = v.join(" ");
-    if (/^-?\d+(\.\d+)?$/.test(parsed)) parsed = Number(parsed);
-    else if (parsed === "true") parsed = true;
-    else if (parsed === "false") parsed = false;
+    const raw = v.join(" ");
+    // Try JSON first so users can pass structured values.
+    let parsed = raw;
+    if ((raw.startsWith("{") && raw.endsWith("}")) || (raw.startsWith("[") && raw.endsWith("]"))) {
+      try {
+        parsed = JSON.parse(raw);
+      } catch (err) {
+        console.error(c.red(`invalid JSON: ${err.message}`));
+        process.exit(2);
+      }
+    } else if (/^-?\d+(\.\d+)?$/.test(raw)) {
+      parsed = Number(raw);
+    } else if (raw === "true") {
+      parsed = true;
+    } else if (raw === "false") {
+      parsed = false;
+    }
+    // Light validation for known keys.
+    if (k === "goals" && (parsed === null || typeof parsed !== "object" || Array.isArray(parsed))) {
+      console.error(c.red("'goals' must be an object, e.g. { health: [...], finance: [...] }"));
+      process.exit(2);
+    }
+    if (k === "name" && (typeof parsed !== "string" || parsed.length === 0)) {
+      console.error(c.red("'name' must be a non-empty string"));
+      process.exit(2);
+    }
+    if (k === "language" && !["en", "th", "ja", "es", "fr", "de", "zh"].includes(parsed)) {
+      console.error(c.red(`'language' must be one of: en, th, ja, es, fr, de, zh`));
+      process.exit(2);
+    }
+    const known = new Set(["name", "language", "goals", "tagVocabulary"]);
+    if (!k.startsWith("baseline.") && !known.has(k)) {
+      console.error(c.yellow(`warning: '${k}' is not a known profile key (known: ${[...known].join(", ")})`));
+    }
     const next = { ...cur, baseline: { ...cur.baseline } };
     if (k.startsWith("baseline.")) {
       next.baseline[k.slice("baseline.".length)] = parsed;

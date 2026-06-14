@@ -3,7 +3,9 @@
 // the offline test suite stays green.
 
 import { promises as fs } from "node:fs";
+import { resolve } from "node:path";
 import { c } from "../cli.js";
+import { projectRoot, readPackageJson } from "../config.js";
 
 function bump(ver, kind) {
   const [maj, min, pat] = ver.split(".").map(Number);
@@ -19,9 +21,8 @@ export async function versionBumpCommand(args) {
     console.error("usage: edgewell version-bump <major|minor|patch>");
     process.exit(2);
   }
-  const pkgPath = "./package.json";
-  const raw = await fs.readFile(pkgPath, "utf8");
-  const pkg = JSON.parse(raw);
+  const pkgPath = resolve(projectRoot(), "package.json");
+  const pkg = readPackageJson();
   const next = bump(pkg.version, kind);
   pkg.version = next;
   await fs.writeFile(pkgPath, JSON.stringify(pkg, null, 2) + "\n");

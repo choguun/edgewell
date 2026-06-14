@@ -6,12 +6,19 @@
 //   vector clear              drop the on-disk index
 //
 // v3.0.0 stores the vector index next to the TF-IDF RAG under
-// data/rag/vectors.json.
+// <dataDir>/<ragDir>/vectors.json. The dimension is read from
+// the active profile (mobile=96, tinkerer=64, desktop=128) so
+// the index matches the rest of the v3.0.0 memory layer.
 
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { VectorIndex } from "../vector-index.js";
 import { c, header } from "../cli.js";
+
+const VECTORS_FILE = "vectors.json";
+// In-process cache: built lazily on first call, then reused.
+let cachedIndex = null;
+let cachedKey = null;
 
 export async function vectorCommand(args, ew) {
   const sub = args[0];
@@ -28,15 +35,29 @@ export async function vectorCommand(args, ew) {
   process.exit(2);
 }
 
+function vectorDim(ew) {
+  // Prefer the profile value, fall back to the global cfg, then 128.
+  return ew.cfg?.vector?.dim ?? ew?.vectorIndex?.dim ?? 128;
+}
+
 async function loadIndex(ew) {
-  const dir = path.join(ew.cfg.data.dir, "rag");
-  const idx = new VectorIndex({ dim: 128 });
+  const dim = vectorDim(ew);
+  const key = `${ew.cfg.data.dir}|${dim}|${ew.rag.chunks.length}`;
+  if (cachedIndex && cachedKey === key) return cachedIndex;
+  const idx = new VectorIndex({ dim });
   // Re-ingest the same chunks as the TF-IDF RAG so the demo works
-  // out of the box.
+  // out of the box. Persist the result so subsequent processes
+  // (or the same process across multiple calls) don't have to
+  // re-embed.
   await ew.rag._ensure();
   for (const chunk of ew.rag.chunks) {
     await idx.ingest({ source: chunk.source, text: chunk.text });
   }
+  const dir = path.join(ew.cfg.data.dir, ew.cfg.rag.dir);
+  await fs.mkdir(dir, { recursive: true });
+  await fs.writeFile(path.join(dir, VECTORS_FILE), JSON.stringify(idx.store, null, 0));
+  cachedIndex = idx;
+  cachedKey = key;
   return idx;
 }
 
@@ -66,9 +87,11 @@ async function vectorStats(ew) {
 }
 
 async function vectorClear(ew) {
-  const dir = path.join(ew.cfg.data.dir, "rag", "vectors.json");
+  const dir = path.join(ew.cfg.data.dir, ew.cfg.rag.dir, VECTORS_FILE);
   try {
     await fs.unlink(dir);
+    cachedIndex = null;
+    cachedKey = null;
     console.log(c.green("vector index cleared"));
   } catch {
     console.log(c.dim("nothing to clear"));

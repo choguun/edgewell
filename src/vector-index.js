@@ -6,6 +6,7 @@
 // additive: the existing RagIndex keeps working and is used as a
 // lexical fallback inside `hybrid-search.js`.
 
+import { createHash } from "node:crypto";
 import { VectorStore } from "./vector-store.js";
 import { makeEmbedder } from "./embedder.js";
 
@@ -19,6 +20,13 @@ function chunkText(text, size = 400, overlap = 50) {
     if (end >= text.length) break;
   }
   return chunks;
+}
+
+// Stable 12-char content hash for a chunk. Used to derive the
+// vector-store id so that two distinct single-chunk texts from the
+// same source don't collide.
+function hashChunk(text) {
+  return createHash("sha1").update(String(text)).digest("hex").slice(0, 12);
 }
 
 export class VectorIndex {
@@ -35,7 +43,11 @@ export class VectorIndex {
     const pieces = chunkText(text, this.chunkSize, this.chunkOverlap);
     for (let i = 0; i < pieces.length; i++) {
       const vec = await this.embed(pieces[i]);
-      const id = `${source}#${i}`;
+      // Use a content-derived id so that ingesting the same text from
+      // the same source multiple times is an upsert, and so that two
+      // distinct single-chunk texts from the same source don't collide
+      // (which they used to with the old `${source}#${i}` id).
+      const id = `${source}#${i}#${hashChunk(pieces[i])}`;
       this.store.upsert(id, vec, { source, text: pieces[i] });
     }
     return pieces.length;

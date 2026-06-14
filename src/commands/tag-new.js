@@ -20,7 +20,7 @@ export async function tagNewCommand(args, ew) {
   vocab.push(name);
   profile.tagVocabulary = vocab;
   // Persist via the standard profile save.
-  const path = ew.profile._path ?? "";
+  const path = ew.profile.filePath;
   if (path) await fs.writeFile(path, JSON.stringify(profile, null, 2));
   console.log(c.green(`added "${name}" to the vocabulary`));
 }

@@ -17,7 +17,7 @@ export async function journalStripCommand(args, ew) {
     const e = all[i];
     if ((e.tags ?? []).includes(tag)) {
       const newTags = (e.tags ?? []).filter((t) => t !== tag);
-      await ew.journal.append({ _ts: e._ts, text: e.text, tags: newTags, strippedTag: tag });
+      await ew.journal.append({ kind: "journal", _ts: e._ts, text: e.text, tags: newTags, strippedTag: tag });
       n++;
     }
   }

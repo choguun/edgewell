@@ -8,6 +8,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { c } from "../cli.js";
 import { redact } from "../redact.js";
+import { readJsonFile } from "../jsonl.js";
 
 function walk(value, fn) {
   if (typeof value === "string") return fn(value);
@@ -28,8 +29,7 @@ export async function snapshotRedactCommand(args) {
   }
   const absIn = path.resolve(inPath);
   const absOut = path.resolve(outPath);
-  const raw = await fs.readFile(absIn, "utf8");
-  const data = JSON.parse(raw);
+  const data = await readJsonFile(absIn, { label: absIn });
   const redacted = walk(data, redact);
   await fs.writeFile(absOut, JSON.stringify(redacted, null, 2));
   console.log(c.green(`wrote redacted snapshot to ${absOut}`));

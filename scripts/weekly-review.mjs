@@ -5,12 +5,17 @@
 // v3.0.0 user scripts are a thin layer on top of the Node
 // runtime. They receive no special context — they are simply
 // executed when the user invokes them.
+//
+// The data directory is resolved the same way `createEdgeWell`
+// does: $EDGEWELL_DATA_DIR, then ./data relative to cwd.
 
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import os from "node:os";
 
-const journal = path.join(os.homedir(), ".edgewell", "data", "journal.jsonl");
+const dataDir = process.env.EDGEWELL_DATA_DIR
+  ? path.resolve(process.env.EDGEWELL_DATA_DIR)
+  : path.resolve(process.cwd(), "data");
+const journal = path.join(dataDir, "journal.jsonl");
 const text = await fs.readFile(journal, "utf8").catch(() => "");
 const lines = text.split(/\r?\n/).filter(Boolean);
 const weekAgo = Date.now() - 7 * 86400_000;
@@ -21,4 +26,4 @@ for (const line of lines) {
     if (new Date(e._ts).getTime() >= weekAgo) n++;
   } catch {}
 }
-console.log(`Weekly review: ${n} journal entries in the last 7 days.`);
+console.log(`Weekly review: ${n} journal entries in the last 7 days (${journal}).`);

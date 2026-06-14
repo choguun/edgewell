@@ -22,6 +22,9 @@ export class JsonlStore {
   }
 
   async append(record) {
+    if (record === null || typeof record !== "object") {
+      throw new Error("append requires a non-null object record");
+    }
     if (this.schema) {
       const candidate = { ...record };
       if (!("_ts" in candidate)) candidate._ts = new Date().toISOString();

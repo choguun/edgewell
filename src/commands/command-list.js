@@ -3,11 +3,11 @@
 // or group by area; it just prints one command per line.
 
 import { header, c } from "../cli.js";
-import { dispatch } from "../dispatch.js";
+import { COMMAND_MAP } from "../dispatch.js";
 
 export async function commandListCommand(_args) {
   header("Registered commands");
-  const names = Object.keys(dispatch.MAP ?? {});
+  const names = Object.keys(COMMAND_MAP ?? {});
   for (const n of names.sort()) {
     console.log(`  ${c.cyan(n)}`);
   }

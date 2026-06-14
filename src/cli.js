@@ -27,7 +27,7 @@ export async function promptLine(question) {
       const s = chunk.toString("utf8");
       buf += s;
       if (s.includes("\n")) {
-        process.stdin.setRawMode(false);
+        if (process.stdin.isTTY) process.stdin.setRawMode(false);
         process.stdin.off("data", onData);
         resolve(buf.replace(/\r?\n$/, ""));
       }
@@ -55,8 +55,18 @@ export function parseFlags(args, defs = {}) {
   for (let i = 0; i < args.length; i++) {
     const a = args[i];
     if (a.startsWith("--")) {
-      const k = a.slice(2);
-      const v = args[i + 1] && !args[i + 1].startsWith("--") ? args[++i] : true;
+      // Support both `--key value` and `--key=value`. The `=` form is
+      // important because some flags naturally take negative numbers
+      // (e.g. `--port=-1`) where the space form would be ambiguous.
+      const eq = a.indexOf("=");
+      let k, v;
+      if (eq !== -1) {
+        k = a.slice(2, eq);
+        v = a.slice(eq + 1);
+      } else {
+        k = a.slice(2);
+        v = args[i + 1] && !args[i + 1].startsWith("--") ? args[++i] : true;
+      }
       out[k] = v;
     } else {
       out._.push(a);

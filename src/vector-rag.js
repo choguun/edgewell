@@ -21,7 +21,11 @@ function hash32(token, seed) {
 
 export function hashEmbedder({ dim = DEFAULT_DIM, seed = 0xc0ffee } = {}) {
   return function embed(text) {
-    const tokens = String(text).toLowerCase().match(/[a-z0-9]+/g) ?? [];
+    // Match Unicode letters, marks, and numbers so non-ASCII
+    // scripts (Chinese, Thai, Arabic, etc.) contribute to the
+    // embedding. Without this, the same text "你好" always
+    // produced the same zero vector regardless of context.
+    const tokens = String(text).toLowerCase().match(/[\p{L}\p{N}_]+/gu) ?? [];
     const v = new Float64Array(dim);
     if (tokens.length === 0) return v;
     for (const t of tokens) {

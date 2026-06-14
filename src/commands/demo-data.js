@@ -9,16 +9,16 @@ import { c, header } from "../cli.js";
 
 const SAMPLES = {
   journal: [
-    { _ts: "2026-01-15T07:30:00Z", text: "Slept 7.5 hours, woke up refreshed.", tags: ["sleep"] },
-    { _ts: "2026-01-15T08:00:00Z", text: "Oatmeal with berries and a coffee.", tags: ["meal"] },
-    { _ts: "2026-01-15T12:30:00Z", text: "Chicken salad for lunch.", tags: ["meal"] },
-    { _ts: "2026-01-15T18:00:00Z", text: "30 minute walk after dinner.", tags: ["activity"] },
-    { _ts: "2026-01-15T22:00:00Z", text: "Read 30 pages before bed.", tags: ["habit"] },
+    { kind: "journal", _ts: "2026-01-15T07:30:00Z", text: "Slept 7.5 hours, woke up refreshed.", tags: ["sleep"] },
+    { kind: "journal", _ts: "2026-01-15T08:00:00Z", text: "Oatmeal with berries and a coffee.", tags: ["meal"] },
+    { kind: "journal", _ts: "2026-01-15T12:30:00Z", text: "Chicken salad for lunch.", tags: ["meal"] },
+    { kind: "journal", _ts: "2026-01-15T18:00:00Z", text: "30 minute walk after dinner.", tags: ["activity"] },
+    { kind: "journal", _ts: "2026-01-15T22:00:00Z", text: "Read 30 pages before bed.", tags: ["habit"] },
   ],
   expenses: [
-    { _ts: "2026-01-15T08:30:00Z", amount: 4.5, category: "food", note: "coffee" },
-    { _ts: "2026-01-15T13:00:00Z", amount: 12.0, category: "food", note: "lunch" },
-    { _ts: "2026-01-15T20:00:00Z", amount: 30.0, category: "transport", note: "rideshare" },
+    { kind: "expense", _ts: "2026-01-15T08:30:00Z", amount: 4.5, category: "food", note: "coffee" },
+    { kind: "expense", _ts: "2026-01-15T13:00:00Z", amount: 12.0, category: "food", note: "lunch" },
+    { kind: "expense", _ts: "2026-01-15T20:00:00Z", amount: 30.0, category: "transport", note: "rideshare" },
   ],
 };
 

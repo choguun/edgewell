@@ -16,7 +16,15 @@ const STOP = new Set(
 );
 
 function tokenize(s) {
-  return (s.toLowerCase().match(/[a-z0-9]+/g) || []).filter((t) => !STOP.has(t) && t.length > 1);
+  // Match Unicode letters, Unicode marks, Unicode numbers, and
+  // the ASCII underscore. The `\p{L}\p{N}` form covers the
+  // non-ASCII scripts (Chinese, Thai, Arabic, Cyrillic, etc.)
+  // that the previous ASCII-only regex missed.
+  return (
+    String(s)
+      .toLowerCase()
+      .match(/[\p{L}\p{N}_]+/gu) || []
+  ).filter((t) => !STOP.has(t) && t.length > 1);
 }
 
 function chunkText(text, size, overlap) {
@@ -88,24 +96,49 @@ export class RagIndex {
   }
 
   async ingest({ source, text }) {
-    await this._ensure();
-    const pieces = chunkText(text, this.chunkSize, this.chunkOverlap);
-    let added = 0;
-    for (const p of pieces) {
-      const tokens = tokenize(p);
-      if (tokens.length < 3) continue;
-      this.chunks.push({
-        id: `${source}#${this.chunks.length}`,
-        source,
-        text: p,
-        tokens,
-        tf: [...termFreq(tokens).entries()],
-      });
-      added++;
+    return this._withLock(async () => {
+      await this._ensure();
+      const pieces = chunkText(text, this.chunkSize, this.chunkOverlap);
+      let added = 0;
+      for (const p of pieces) {
+        const tokens = tokenize(p);
+        // Accept any non-empty chunk. The old 3-token minimum
+        // rejected many non-Latin scripts (Chinese, Japanese,
+        // Arabic) which often have just one or two tokens per
+        // sentence. The token-length check inside tokenize() is
+        // already a sufficient filter for stop words and noise.
+        if (tokens.length < 1) continue;
+        this.chunks.push({
+          id: `${source}#${this.chunks.length}`,
+          source,
+          text: p,
+          tokens,
+          tf: [...termFreq(tokens).entries()],
+        });
+        added++;
+      }
+      this._rebuildIndex();
+      await this._persist();
+      return added;
+    });
+  }
+
+  // Simple async mutex so concurrent ingest calls from the
+  // same RagIndex instance don't lose chunks. Without this, two
+  // ingests that started at the same time would each read the
+  // existing chunks array, each push, and then one of the two
+  // _persist() calls would overwrite the other.
+  async _withLock(fn) {
+    let release;
+    const next = new Promise((res) => { release = res; });
+    const prev = this._lock || Promise.resolve();
+    this._lock = next;
+    try {
+      await prev;
+      return await fn();
+    } finally {
+      release();
     }
-    this._rebuildIndex();
-    await this._persist();
-    return added;
   }
 
   async ingestFile({ source, filePath }) {

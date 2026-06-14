@@ -3,9 +3,9 @@
 // store. v3.0.0 overwrites the entire profile (no merge), so
 // callers should snapshot first.
 
-import { promises as fs } from "node:fs";
 import path from "node:path";
 import { c } from "../cli.js";
+import { readJsonFile } from "../jsonl.js";
 
 export async function profileImportCommand(args, ew) {
   const [inPath] = args;
@@ -14,8 +14,11 @@ export async function profileImportCommand(args, ew) {
     process.exit(2);
   }
   const abs = path.resolve(inPath);
-  const raw = await fs.readFile(abs, "utf8");
-  const profile = JSON.parse(raw);
+  const profile = await readJsonFile(abs, { label: abs });
+  if (profile === null || typeof profile !== "object" || Array.isArray(profile)) {
+    console.error(c.red(`${abs} is not a profile object (root must be a JSON object)`));
+    process.exit(1);
+  }
   await ew.profile.save(profile);
   console.log(c.green(`profile loaded from ${abs}`));
 }

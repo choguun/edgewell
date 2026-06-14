@@ -19,6 +19,6 @@ export async function tagsAddCommand(args, ew) {
   const tags = Array.from(new Set([...(entry.tags ?? []), tag]));
   // JsonlStore is append-only, so we just append a new entry that
   // records the change in a small audit shape.
-  await ew.journal.append({ _ts: new Date().toISOString(), text: entry.text, tags, tagAdded: tag });
+  await ew.journal.append({ kind: "journal", _ts: new Date().toISOString(), text: entry.text, tags, tagAdded: tag });
   console.log(`tagged entry ${id} with "${tag}"`);
 }

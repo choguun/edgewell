@@ -32,7 +32,7 @@ export function weeklySummary(journal, expenses, now = new Date()) {
     from: weekStart.toISOString(),
     journalCount: j.length,
     expenseCount: e.length,
-    expenseTotal: e.reduce((s, x) => s + Number(x.amount ?? 0), 0),
+    expenseTotal: e.reduce((s, x) => s + safeNumber(x.amount), 0),
     byCategory: totals,
   };
 }
@@ -46,22 +46,34 @@ export function monthlySummary(journal, expenses, now = new Date()) {
     from: monthStart.toISOString(),
     journalCount: j.length,
     expenseCount: e.length,
-    expenseTotal: e.reduce((s, x) => s + Number(x.amount ?? 0), 0),
+    expenseTotal: e.reduce((s, x) => s + safeNumber(x.amount), 0),
     byCategory: totals,
   };
+}
+
+function safeNumber(x) {
+  const n = Number(x);
+  return Number.isFinite(n) ? n : 0;
 }
 
 export function sumByCategory(records) {
   const map = new Map();
   for (const r of records) {
     const c = r.category ?? "other";
-    map.set(c, (map.get(c) ?? 0) + Number(r.amount ?? 0));
+    // Skip non-numeric amounts rather than producing NaN that
+    // would poison the running total for the whole category.
+    const n = Number(r.amount);
+    if (!Number.isFinite(n)) continue;
+    map.set(c, (map.get(c) ?? 0) + n);
   }
   return Object.fromEntries([...map.entries()].sort((a, b) => b[1] - a[1]));
 }
 
 export function daysSince(iso) {
-  return Math.floor((Date.now() - new Date(iso).getTime()) / MS_DAY);
+  if (!iso) return NaN;
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return NaN;
+  return Math.floor((Date.now() - t) / MS_DAY);
 }
 
 export { startOfDay, startOfWeek, startOfMonth };

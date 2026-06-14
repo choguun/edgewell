@@ -44,6 +44,31 @@ Reply in 2-4 sentences.
     const total = events.reduce((s, e) => s + Number(e.value ?? 0), 0) / 60;
     return `The user logged ${events.length} sleep events totalling ${total.toFixed(2)} hours. Give a one-sentence verdict.`;
   },
+
+  nutrition: ({ entries = [] }) => {
+    const mealEntries = entries.filter((e) => {
+      const tags = e.tags ?? [];
+      return tags.includes("meal") || tags.includes("food") || e.category === "food";
+    });
+    const days = new Set(mealEntries.map((e) => (e._ts ?? "").slice(0, 10))).size;
+    return `The user logged ${mealEntries.length} meal/food entries across ${days} days. Give a one-sentence verdict.`;
+  },
+
+  hydration: ({ entries = [] }) => {
+    const waterEntries = entries.filter((e) => {
+      const t = (e.text ?? "").toLowerCase();
+      return /(\d+(?:\.\d+)?\s*(?:ml|l|liter|litre))/.test(t) ||
+        (e.tags ?? []).some((tag) => ["hydration", "water"].includes(tag));
+    });
+    return `The user logged ${waterEntries.length} water/hydration entries. Give a one-sentence verdict on whether they are on track.`;
+  },
+
+  activity: ({ events = [] }) => {
+    const steps = events.filter((e) => e.kind === "steps");
+    const total = steps.reduce((s, e) => s + Number(e.value ?? 0), 0);
+    const days = new Set(steps.map((e) => (e.ts ?? "").slice(0, 10))).size;
+    return `The user logged ${steps.length} step events totalling ${total} steps across ${days} days. Give a one-sentence verdict against an 8,000-steps-per-day goal.`;
+  },
 };
 
 export function renderTemplate(name, ctx) {

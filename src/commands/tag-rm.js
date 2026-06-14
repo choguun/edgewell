@@ -19,6 +19,6 @@ export async function tagRmCommand(args, ew) {
   }
   const entry = all[id];
   const newTags = (entry.tags ?? []).filter((t) => t !== tag);
-  await ew.journal.append({ _ts: new Date().toISOString(), text: entry.text, tags: newTags, tagRemoved: tag });
+  await ew.journal.append({ kind: "journal", _ts: new Date().toISOString(), text: entry.text, tags: newTags, tagRemoved: tag });
   console.log(c.green(`removed "${tag}" from entry ${id}`));
 }

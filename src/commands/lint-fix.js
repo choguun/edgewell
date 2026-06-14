@@ -17,7 +17,7 @@ export async function lintFixCommand(_args, ew) {
     return;
   }
   for (const id of emptyIds) {
-    await ew.journal.append({ _ts: new Date().toISOString(), text: "(empty)", fixedFrom: id });
+    await ew.journal.append({ kind: "journal", _ts: new Date().toISOString(), text: "(empty)", fixedFrom: id });
   }
   console.log(c.green(`queued ${emptyIds.length} corrections`));
 }

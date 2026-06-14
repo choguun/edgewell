@@ -16,9 +16,9 @@ export async function journalEmojiCommand(args, ew) {
   }
   const last = all[all.length - 1];
   const newText = `${last.text ?? ""} ${emoji}`.trim();
-  const path = ew.journal._path ?? "";
+  const path = ew.journal.filePath;
   if (path) {
-    await fs.appendFile(path, `\n${JSON.stringify({ _ts: new Date().toISOString(), text: newText, originalId: all.length - 1, emojiAppended: emoji })}\n`);
+    await fs.appendFile(path, `\n${JSON.stringify({ kind: "journal", _ts: new Date().toISOString(), text: newText, originalId: all.length - 1, emojiAppended: emoji })}\n`);
   }
   console.log(c.green(`appended ${emoji} to entry ${all.length - 1}`));
 }

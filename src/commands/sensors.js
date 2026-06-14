@@ -41,7 +41,7 @@ async function ingestSensors(args, ew) {
   const summary = summariseEvents(events);
   const line = toJournalLine(summary);
   if (line) {
-    await ew.journal.append({ _ts: new Date().toISOString(), text: line, tags: ["sensors"] });
+    await ew.journal.append({ kind: "journal", _ts: new Date().toISOString(), text: line, tags: ["sensors"] });
     console.log("journal entry:");
     console.log(`  ${line}`);
   } else {

@@ -95,4 +95,12 @@ export class Orchestrator {
         })) yield tok;
     }
   }
+
+  // One-shot reply used by the companion server's POST /chat.
+  // Returns a single string; uses the lifestyle system prompt as
+  // the default branch so the response is self-contained.
+  async handle(question, history = []) {
+    const { agent, reply } = await this.ask(question, history);
+    return `[${agent}] ${reply}`;
+  }
 }

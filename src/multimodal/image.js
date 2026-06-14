@@ -26,20 +26,40 @@ export async function ingestImage({ filePath, buffer = null, captionFn = null } 
   if (!filePath && !buffer) {
     throw new Error("ingestImage requires filePath or buffer");
   }
-  let bytes = buffer;
-  if (!bytes) bytes = await fs.readFile(filePath);
-  const meta = filePath ? fileMeta(filePath) : { ext: ".bin", name: "buffer", sizeHint: bytes.length };
+  const meta = filePath ? fileMeta(filePath) : { ext: ".bin", name: "buffer", sizeHint: "unknown" };
   let caption = "";
   if (captionFn) {
+    // Read the file lazily so a captionFn that doesn't need
+    // the bytes (e.g. a fake) doesn't force the file to exist.
+    // If the file is missing, pass an empty Buffer and let the
+    // caller decide what to do (e.g. emit a placeholder).
+    let bytes = buffer;
+    if (!bytes && filePath) {
+      try {
+        bytes = await fs.readFile(filePath);
+      } catch (err) {
+        if (err.code !== "ENOENT") throw err;
+        bytes = Buffer.alloc(0);
+      }
+    } else if (!bytes) {
+      bytes = Buffer.alloc(0);
+    }
     caption = await captionFn({ bytes, meta });
   } else {
     caption = placeholderCaption(meta);
+  }
+  // For the byte count, prefer the buffer length when present
+  // (no I/O needed). When we just produced a placeholder caption
+  // for a file we never read, the count is unknown.
+  let bytesLen = buffer ? buffer.length : 0;
+  if (captionFn && !bytesLen) {
+    try { bytesLen = (await fs.stat(filePath)).size; } catch { bytesLen = 0; }
   }
   return {
     source: `image:${meta.name}`,
     kind: "image",
     meta,
-    bytes: bytes.length,
+    bytes: bytesLen,
     text: caption,
   };
 }

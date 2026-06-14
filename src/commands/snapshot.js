@@ -11,7 +11,7 @@ export async function snapshotCommand(_args, ew) {
   const p = await profile.load();
   await rag._ensure();
   const snap = {
-    version: cfg.version ?? "2.0.0",
+    version: cfg.version ?? "3.0.0",
     generatedAt: new Date().toISOString(),
     config: { localModel: cfg.localModel, delegateModel: cfg.delegateModel, p2p: cfg.p2p },
     profile: p,

@@ -22,7 +22,7 @@ export async function pluginsListCommand(_args, _ew) {
 
 export async function pluginsRunCommand(_args, ew) {
   const dir = pluginsDir();
-  const loaded = await loadPlugins(dir, ew);
+  const { loaded } = await loadPlugins(dir, ew);
   if (loaded.length === 0) {
     console.log(c.dim(`(no plugins loaded from ${dir})`));
     return;

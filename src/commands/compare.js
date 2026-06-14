@@ -3,8 +3,8 @@
 // removed, how many expenses differ, and the version that produced
 // each export.
 
-import { promises as fs } from "node:fs";
 import { c, header } from "../cli.js";
+import { readJsonFile } from "../jsonl.js";
 
 function keyOf(e, kind) {
   if (kind === "journal") return `${e._ts}|${e.text}`;
@@ -18,8 +18,8 @@ export async function compareCommand(args) {
     process.exit(2);
   }
   header(`Comparing ${a} ↔ ${b}`);
-  const da = JSON.parse(await fs.readFile(a, "utf8"));
-  const db = JSON.parse(await fs.readFile(b, "utf8"));
+  const da = await readJsonFile(a, { label: a });
+  const db = await readJsonFile(b, { label: b });
   console.log(`${c.bold("version:")}  ${da.version ?? "?"} ↔ ${db.version ?? "?"}`);
   console.log(`${c.bold("exported:")} ${da.exportedAt ?? "?"} ↔ ${db.exportedAt ?? "?"}`);
   const ja = new Map((da.journal ?? []).map((e) => [keyOf(e, "journal"), e]));

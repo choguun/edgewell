@@ -17,6 +17,6 @@ export async function journalRmCommand(args, ew) {
     process.exit(2);
   }
   const original = all[id];
-  await ew.journal.append({ _ts: new Date().toISOString(), text: original.text, removedFrom: id });
+  await ew.journal.append({ kind: "journal", _ts: new Date().toISOString(), text: original.text, removedFrom: id });
   console.log(c.green(`entry ${id} marked removed`));
 }

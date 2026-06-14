@@ -1,10 +1,10 @@
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import path from "node:path";
+// `edgewell version` prints the current EdgeWell version. The
+// version is sourced from package.json at module load time, so the
+// command works regardless of the user's CWD.
 
-const here = path.dirname(fileURLToPath(import.meta.url));
-const pkg = JSON.parse(readFileSync(path.resolve(here, "../../package.json"), "utf8"));
+import { readPackageJson } from "../config.js";
 
 export async function versionCommand() {
+  const pkg = readPackageJson();
   console.log(`edgewell v${pkg.version}`);
 }

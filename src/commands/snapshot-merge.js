@@ -5,6 +5,7 @@
 
 import { promises as fs } from "node:fs";
 import { c, header } from "../cli.js";
+import { readJsonFile } from "../jsonl.js";
 
 export async function snapshotMergeCommand(args, ew) {
   const [inPath, ...rest] = args;
@@ -13,12 +14,12 @@ export async function snapshotMergeCommand(args, ew) {
     process.exit(2);
   }
   const replace = rest.includes("--replace");
-  const raw = await fs.readFile(inPath, "utf8");
-  const data = JSON.parse(raw);
+  const data = await readJsonFile(inPath, { label: inPath });
   header("Snapshot merge");
   if (replace) {
     // Clear the existing JSONL files by writing an empty file.
-    await fs.writeFile(ew.journal._path ?? "", "");
+    if (ew.journal.filePath) await fs.writeFile(ew.journal.filePath, "");
+    if (ew.expenses.filePath) await fs.writeFile(ew.expenses.filePath, "");
   }
   const jKeys = new Set((await ew.journal.readAll()).map((e) => `${e._ts}|${e.text}`));
   const eKeys = new Set((await ew.expenses.readAll()).map((e) => `${e._ts}|${e.amount}|${e.category}`));

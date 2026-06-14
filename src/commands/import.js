@@ -16,11 +16,34 @@ export async function importCommand(args, ew) {
   const replace = rest.includes("--replace");
   const abs = path.resolve(inPath);
   header(`Importing from ${abs}`);
-  const raw = await fs.readFile(abs, "utf8");
-  const data = JSON.parse(raw);
+  let raw;
+  try {
+    raw = await fs.readFile(abs, "utf8");
+  } catch (err) {
+    if (err.code === "ENOENT") {
+      console.error(c.red(`file not found: ${abs}`));
+      process.exit(1);
+    }
+    throw err;
+  }
+  let data;
+  try {
+    data = JSON.parse(raw);
+  } catch (err) {
+    console.error(c.red(`${abs} is not a valid JSON file (run \`edgewell export\` first):`));
+    console.error(c.dim(`  ${err.message}`));
+    process.exit(1);
+  }
+  if (data === null || typeof data !== "object" || Array.isArray(data)) {
+    console.error(c.red(`${abs} is not an EdgeWell export envelope (root must be a JSON object)`));
+    process.exit(1);
+  }
   if (replace) {
-    if (Array.isArray(data.journal)) {
-      await ew.journal._path && (await ew.journal._reset?.());
+    if (Array.isArray(data.journal) && ew.journal.filePath) {
+      await fs.writeFile(ew.journal.filePath, "");
+    }
+    if (Array.isArray(data.expenses) && ew.expenses.filePath) {
+      await fs.writeFile(ew.expenses.filePath, "");
     }
   }
   const existingJournal = await ew.journal.readAll();
