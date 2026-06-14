@@ -1,6 +1,10 @@
-// @ts-nocheck
 // FinanceAgent: budgeting advice, spending trends, and savings plans
 // over the user's expenses JSONL.
+
+import type { ChatMessage, LLM } from "../llm-types.js";
+import type { RagIndex } from "../rag.js";
+import type { ProfileStore } from "../profile.js";
+import type { JsonlStore } from "../store.js";
 
 const SYSTEM = `You are EdgeWell Finance, a private on-device personal finance coach.
 You help with budgeting, expense trends, savings plans, and simple forecasting
@@ -14,17 +18,40 @@ Rules:
   time horizons (1, 3, 12 months).
 - Always close with a one-line disclaimer: "Note: not financial advice."`;
 
+export interface FinanceAgentOptions {
+  llm: LLM;
+  rag?: RagIndex | null;
+  profile?: ProfileStore | null;
+  expenses?: JsonlStore | null;
+}
+
+export interface ExpenseLike {
+  category?: string;
+  amount?: number;
+  _ts?: string;
+}
+
+export interface MonthlyPlanOptions {
+  income?: number;
+  savingsPct?: number;
+}
+
 export class FinanceAgent {
-  constructor({ llm, rag, profile, expenses }) {
+  public llm: LLM;
+  public rag: RagIndex | null;
+  public profile: ProfileStore | null;
+  public expenses: JsonlStore | null;
+
+  constructor({ llm, rag = null, profile = null, expenses = null }: FinanceAgentOptions) {
     this.llm = llm;
     this.rag = rag;
     this.profile = profile;
     this.expenses = expenses;
   }
 
-  _summary(expenses) {
+  private _summary(expenses: ExpenseLike[]): string {
     if (!expenses || expenses.length === 0) return "No expenses recorded yet.";
-    const byCat = new Map();
+    const byCat = new Map<string, number>();
     let total = 0;
     for (const e of expenses) {
       const c = e.category ?? "other";
@@ -40,21 +67,21 @@ export class FinanceAgent {
     ].join("\n");
   }
 
-  async _ctx(question) {
+  private async _ctx(question: string): Promise<string> {
     if (!this.rag) return "";
     return this.rag.contextBlock(question, 3);
   }
 
-  async ask(question, history = []) {
-    const expenses = this.expenses ? await this.expenses.readAll() : [];
+  async ask(question: string, history: ChatMessage[] = []): Promise<string> {
+    const expenses: ExpenseLike[] = this.expenses ? await this.expenses.readAll() : [];
     const summary = this._summary(expenses);
     const ragCtx = await this._ctx(question);
     const user = `User expense summary:\n${summary}\n\n${ragCtx ? `Notes:\n${ragCtx}\n\n` : ""}Question: ${question}`;
     return this.llm.prompt({ system: SYSTEM, user, history });
   }
 
-  async *streamAsk(question, history = []) {
-    const expenses = this.expenses ? await this.expenses.readAll() : [];
+  async *streamAsk(question: string, history: ChatMessage[] = []): AsyncIterable<string> {
+    const expenses: ExpenseLike[] = this.expenses ? await this.expenses.readAll() : [];
     const summary = this._summary(expenses);
     const ragCtx = await this._ctx(question);
     const user = `User expense summary:\n${summary}\n\n${ragCtx ? `Notes:\n${ragCtx}\n\n` : ""}Question: ${question}`;
@@ -63,8 +90,11 @@ export class FinanceAgent {
     }
   }
 
-  async monthlyPlan({ income, savingsPct = 20 } = {}) {
-    const inc = income ?? this.profile?.baseline?.monthlyIncome ?? 0;
+  async monthlyPlan({ income, savingsPct = 20 }: MonthlyPlanOptions = {}): Promise<string> {
+    // The profile baseline might be `monthlyIncome: 0` by default;
+    // fall back to whatever was passed in, then 0.
+    const baseline = (await this.profile?.load())?.baseline;
+    const inc = income ?? baseline?.monthlyIncome ?? 0;
     const target = (inc * savingsPct) / 100;
     const user = `Income: ${inc}. Target monthly savings: ${target.toFixed(2)} (${savingsPct}%). Suggest a category budget in percentages of income.`;
     return this.llm.prompt({ system: SYSTEM, user, maxTokens: 400 });
