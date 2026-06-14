@@ -3,13 +3,18 @@
   "version": "3.0.0",
   "description": "EdgeWell - private on-device health and finance coach powered by QVAC",
   "type": "module",
-  "main": "src/index.js",
+  "main": "src/index.ts",
   "bin": {
     "edgewell": "bin/edgewell.js"
   },
   "scripts": {
-    "start": "node bin/edgewell.js",
-    "test": "node --test test/*.test.js"
+    "start": "node --import tsx/esm bin/edgewell.js",
+    "dev": "tsx bin/edgewell.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test test/*.test.{js,ts}",
+    "test:js": "node --test test/*.test.js",
+    "test:ts": "node --import tsx --test test/*.test.ts"
   },
   "keywords": ["qvac", "edge", "ai", "health", "finance", "coach"],
   "license": "MIT",
@@ -17,6 +22,12 @@
     "node": ">=22.17"
   },
   "dependencies": {
-    "@qvac/sdk": "*"
-  }
+    "@qvac/sdk": "link:./vendor/qvac-sdk"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.6.0"
+  },
+  "packageManager": "pnpm@11.6.0"
 }

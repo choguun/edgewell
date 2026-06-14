@@ -1,0 +1,10 @@
+{
+  "name": "@qvac/sdk",
+  "version": "0.0.0-stub",
+  "type": "module",
+  "main": "index.mjs",
+  "exports": {
+    ".": "./index.mjs"
+  },
+  "description": "Local stub. The real @qvac/sdk is not on the public registry; src/qvac.js dynamic-imports it and falls back to a deterministic local response if missing."
+}

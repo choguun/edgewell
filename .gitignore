@@ -15,3 +15,4 @@ data/profile.json
 dist/
 build/
 coverage/
+*.tsbuildinfo
