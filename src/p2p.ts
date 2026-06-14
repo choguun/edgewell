@@ -1,4 +1,3 @@
-// @ts-nocheck
 // EdgeWell P2P delegation.
 // - Server: hosts a larger QVAC model and accepts JSON completion requests
 //   over HTTP. Streams tokens via chunked transfer-encoding (NDJSON).
@@ -6,31 +5,63 @@
 //   timeout / network error / explicit fallback, runs locally.
 
 import http from "node:http";
+import type { AddressInfo } from "node:net";
 import { EdgeWellLLM } from "./qvac.js";
-import { defaultLogger, Logger } from "./logger.js";
+import { defaultLogger, type Logger } from "./logger.js";
 import { Metrics, timed } from "./metrics.js";
+import type { LLM, PromptInput } from "./llm-types.js";
+
+// Adapter: qvac.ts's EdgeWellLLM doesn't yet export a typed
+// LLM surface (its prompt/stream use destructured implicit-any
+// params). Cast at the boundary until qvac.ts gets peeled
+// off @ts-nocheck. The behavioural contract matches.
 
 // --- Server ---
+
+export interface StartServerOptions {
+  host?: string;
+  port?: number;
+  model?: string | null;
+  llm?: LLM;
+  onProgress?: (msg: string) => void;
+  logger?: Logger;
+  metrics?: Metrics;
+}
+
+export interface StartServerHandle {
+  host: string;
+  port: number;
+  close(): Promise<void>;
+}
+
+interface CompletionRequestBody {
+  system?: string;
+  user?: string;
+  history?: PromptInput["history"];
+  maxTokens?: number;
+  temperature?: number;
+  stream?: boolean;
+}
 
 export function startServer({
   host = "127.0.0.1",
   port = 8787,
-  model,
+  model = null,
   llm,
   onProgress,
   logger = defaultLogger,
   metrics = new Metrics(),
-} = {}) {
+}: StartServerOptions = {}): Promise<StartServerHandle> {
   const log = logger.child({ component: "p2p-server", port });
   const m = metrics;
 
   const server = http.createServer(async (req, res) => {
     const t0 = Date.now();
-    m.inc("p2p_server_requests_total", 1, { path: req.url, method: req.method });
+    m.inc("p2p_server_requests_total", 1, { path: req.url ?? "", method: req.method ?? "" });
     try {
       if (req.method === "GET" && req.url === "/health") {
         res.writeHead(200, { "content-type": "application/json" });
-        res.end(JSON.stringify({ ok: true, model: model ?? null, uptimeMs: process.uptime() * 1000 }));
+        res.end(JSON.stringify({ ok: true, model, uptimeMs: process.uptime() * 1000 }));
         log.debug("health", { remote: req.socket.remoteAddress });
         return;
       }
@@ -40,10 +71,17 @@ export function startServer({
         return;
       }
       if (req.method === "POST" && req.url === "/completion") {
-        const chunks = [];
-        for await (const c of req) chunks.push(c);
-        const body = JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}");
-        const { system, user, history = [], maxTokens = 512, temperature = 0.3, stream = true } = body;
+        const chunks: Buffer[] = [];
+        for await (const c of req) chunks.push(c as Buffer);
+        const body = JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}") as CompletionRequestBody;
+        const {
+          system,
+          user = "",
+          history = [],
+          maxTokens = 512,
+          temperature = 0.3,
+          stream = true,
+        } = body;
 
         if (!llm) {
           res.writeHead(500, { "content-type": "application/json" });
@@ -70,9 +108,10 @@ export function startServer({
             m.inc("p2p_server_tokens_total", tokens);
             log.info("completion streamed", { tokens, ms: Date.now() - t0 });
           } catch (err) {
+            const msg = (err as Error)?.message ?? String(err);
             m.inc("p2p_server_errors_total", 1, { reason: "stream" });
-            res.write(JSON.stringify({ error: String(err?.message ?? err) }) + "\n");
-            log.error("stream failed", { err: String(err?.message ?? err) });
+            res.write(JSON.stringify({ error: msg }) + "\n");
+            log.error("stream failed", { err: msg });
           }
           res.end();
         } else {
@@ -85,10 +124,11 @@ export function startServer({
             res.end(JSON.stringify({ text }));
             log.info("completion served", { ms: Date.now() - t0, chars: text.length });
           } catch (err) {
+            const msg = (err as Error)?.message ?? String(err);
             m.inc("p2p_server_errors_total", 1, { reason: "prompt" });
             res.writeHead(500, { "content-type": "application/json" });
-            res.end(JSON.stringify({ error: String(err?.message ?? err) }));
-            log.error("prompt failed", { err: String(err?.message ?? err) });
+            res.end(JSON.stringify({ error: msg }));
+            log.error("prompt failed", { err: msg });
           }
         }
         return;
@@ -96,23 +136,26 @@ export function startServer({
       res.writeHead(404, { "content-type": "application/json" });
       res.end(JSON.stringify({ error: "not found" }));
     } catch (err) {
+      const msg = (err as Error)?.message ?? String(err);
       m.inc("p2p_server_errors_total", 1, { reason: "unhandled" });
-      onProgress?.(String(err?.message ?? err));
-      log.error("unhandled", { err: String(err?.message ?? err) });
+      onProgress?.(msg);
+      log.error("unhandled", { err: msg });
       res.writeHead(500, { "content-type": "application/json" });
-      res.end(JSON.stringify({ error: String(err?.message ?? err) }));
+      res.end(JSON.stringify({ error: msg }));
     }
   });
 
   return new Promise((resolve, reject) => {
     server.once("error", reject);
     server.listen(port, host, () => {
-      const addr = server.address();
-      log.info("listening", { host: addr.address, port: addr.port, model: model ?? null });
+      const addr = server.address() as AddressInfo | null;
+      const resolvedHost = addr?.address ?? host;
+      const resolvedPort = addr?.port ?? port;
+      log.info("listening", { host: resolvedHost, port: resolvedPort, model });
       resolve({
-        host: addr.address,
-        port: addr.port,
-        close: () => new Promise((r) => server.close(() => r())),
+        host: resolvedHost,
+        port: resolvedPort,
+        close: () => new Promise<void>((r) => server.close(() => r())),
       });
     });
   });
@@ -120,19 +163,31 @@ export function startServer({
 
 // --- Client ---
 
+export interface PeerClientOptions {
+  host: string;
+  port: number;
+  timeoutMs?: number;
+  model?: string | null;
+}
+
 export class PeerClient {
-  constructor({ host, port, timeoutMs = 30_000, model = null } = {}) {
+  public host: string;
+  public port: number;
+  public timeoutMs: number;
+  public model: string | null;
+
+  constructor({ host, port, timeoutMs = 30_000, model = null }: PeerClientOptions) {
     this.host = host;
     this.port = port;
     this.timeoutMs = timeoutMs;
     this.model = model;
   }
 
-  get baseUrl() {
+  get baseUrl(): string {
     return `http://${this.host}:${this.port}`;
   }
 
-  async ping() {
+  async ping(): Promise<boolean> {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 2_000);
     try {
@@ -145,10 +200,10 @@ export class PeerClient {
     }
   }
 
-  async *stream(body) {
+  async *stream(body: PromptInput): AsyncIterable<string> {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), this.timeoutMs);
-    let res;
+    let res: Response;
     try {
       res = await fetch(`${this.baseUrl}/completion`, {
         method: "POST",
@@ -157,7 +212,8 @@ export class PeerClient {
         signal: ctrl.signal,
       });
     } catch (err) {
-      throw new Error(`peer unreachable: ${err?.message ?? err}`);
+      const msg = (err as Error)?.message ?? String(err);
+      throw new Error(`peer unreachable: ${msg}`);
     } finally {
       clearTimeout(t);
     }
@@ -177,9 +233,9 @@ export class PeerClient {
         const line = buf.slice(0, idx).trim();
         buf = buf.slice(idx + 1);
         if (!line) continue;
-        let obj;
+        let obj: { token?: string; error?: string; done?: boolean };
         try {
-          obj = JSON.parse(line);
+          obj = JSON.parse(line) as typeof obj;
         } catch {
           continue;
         }
@@ -190,7 +246,7 @@ export class PeerClient {
     }
   }
 
-  async prompt(body) {
+  async prompt(body: PromptInput): Promise<string> {
     let text = "";
     for await (const tok of this.stream(body)) text += tok;
     return text;
@@ -200,29 +256,47 @@ export class PeerClient {
 // --- Delegating LLM ---
 // Tries a peer first; on failure, runs locally.
 
+export interface DelegatingLLMOptions {
+  peer: PeerClient;
+  localModel?: string;
+  sdkExports?: unknown;
+}
+
 export class DelegatingLLM {
-  constructor({ peer, localModel, sdkExports } = {}) {
+  public peer: PeerClient;
+  public local: LLM;
+  /** Hold the typed reference so we can still call load/unload. */
+  private localImpl: EdgeWellLLM;
+
+  constructor({ peer, localModel, sdkExports }: DelegatingLLMOptions) {
     this.peer = peer;
-    this.local = new EdgeWellLLM({ model: localModel, sdkExports });
+    // qvac.ts's EdgeWellLLM constructor types are not exported (it
+    // uses destructure-without-annotations inside @ts-nocheck), so
+    // the call-site type is inferred narrowly. Cast at the boundary.
+    this.localImpl = new EdgeWellLLM({
+      model: localModel,
+      sdkExports: (sdkExports ?? null) as null,
+    } as ConstructorParameters<typeof EdgeWellLLM>[0]);
+    this.local = this.localImpl as unknown as LLM;
   }
 
-  async load() {
+  async load(): Promise<string | null> {
     // Best-effort warm local; peer is implicit on first call.
-    return this.local.load();
+    return this.localImpl.load();
   }
 
-  async unload() {
-    return this.local.unload();
+  async unload(): Promise<void> {
+    return this.localImpl.unload();
   }
 
-  async *_withFallback(body) {
+  private async *_withFallback(body: PromptInput): AsyncIterable<string> {
     let any = false;
     try {
       for await (const tok of this.peer.stream(body)) {
         any = true;
         yield tok;
       }
-    } catch (err) {
+    } catch {
       // Peer failed - fall through to local.
       any = false;
     }
@@ -231,11 +305,11 @@ export class DelegatingLLM {
     }
   }
 
-  async *stream(body) {
+  async *stream(body: PromptInput): AsyncIterable<string> {
     yield* this._withFallback(body);
   }
 
-  async prompt(body) {
+  async prompt(body: PromptInput): Promise<string> {
     let text = "";
     for await (const tok of this.stream(body)) text += tok;
     return text;
