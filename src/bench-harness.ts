@@ -1,10 +1,40 @@
-// @ts-nocheck
 // Benchmark harness for the v3.0.0 CLI. Pure JS, no external
 // dependencies. The harness runs an async function N times and
 // reports the median, p95, and mean wall-clock time. Useful for
 // the `bench` command and for performance regression tests.
 
-export async function runBenchmark({ name, fn, trials = 5, warmup = 1 } = {}) {
+export interface RunBenchmarkOptions {
+  name?: string;
+  fn: () => Promise<unknown> | unknown;
+  trials?: number;
+  warmup?: number;
+}
+
+export interface BenchmarkFailure {
+  trial: number;
+  error: string;
+}
+
+export interface BenchmarkResult {
+  name: string;
+  trials: number;
+  warmup: number;
+  samples: number[];
+  median: number;
+  p95: number;
+  mean: number;
+  min: number;
+  max: number;
+  failures: BenchmarkFailure[];
+  ok: boolean;
+}
+
+export async function runBenchmark({
+  name,
+  fn,
+  trials = 5,
+  warmup = 1,
+}: RunBenchmarkOptions): Promise<BenchmarkResult> {
   if (typeof fn !== "function") throw new Error("fn is required");
   if (!Number.isInteger(trials) || trials < 1) {
     throw new Error("trials must be a positive integer");
@@ -12,8 +42,8 @@ export async function runBenchmark({ name, fn, trials = 5, warmup = 1 } = {}) {
   if (!Number.isInteger(warmup) || warmup < 0) {
     throw new Error("warmup must be a non-negative integer");
   }
-  const samples = [];
-  const failures = [];
+  const samples: number[] = [];
+  const failures: BenchmarkFailure[] = [];
   for (let i = 0; i < warmup; i++) {
     try { await fn(); } catch { /* swallow warmup errors */ }
   }
@@ -23,7 +53,8 @@ export async function runBenchmark({ name, fn, trials = 5, warmup = 1 } = {}) {
       await fn();
       samples.push(performance.now() - t0);
     } catch (err) {
-      failures.push({ trial: i, error: err?.message ?? String(err) });
+      const e = err as Error | undefined;
+      failures.push({ trial: i, error: e?.message ?? String(err) });
     }
   }
   if (samples.length === 0) {
@@ -49,17 +80,17 @@ export async function runBenchmark({ name, fn, trials = 5, warmup = 1 } = {}) {
     trials,
     warmup,
     samples,
-    median: samples[Math.floor(samples.length / 2)],
-    p95: samples[Math.floor(samples.length * 0.95)] ?? samples[samples.length - 1],
+    median: samples[Math.floor(samples.length / 2)] ?? NaN,
+    p95: samples[Math.floor(samples.length * 0.95)] ?? samples[samples.length - 1] ?? NaN,
     mean: sum / samples.length,
-    min: samples[0],
-    max: samples[samples.length - 1],
+    min: samples[0] ?? NaN,
+    max: samples[samples.length - 1] ?? NaN,
     failures,
     ok: true,
   };
 }
 
-export function formatBenchResult(r) {
+export function formatBenchResult(r: BenchmarkResult): string {
   if (r.ok === false) {
     const fLen = r.failures?.length ?? 0;
     return `${r.name}: ALL ${r.trials} TRIALS FAILED (${fLen} error(s))`;
