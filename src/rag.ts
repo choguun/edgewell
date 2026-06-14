@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Tiny in-memory RAG: chunk text, build TF-IDF vectors, cosine-similarity search.
 // No external deps. Designed for the small personal corpora users will have
 // (hundreds to thousands of chunks). Persists chunks to data/rag/chunks.json.
@@ -6,7 +5,39 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 
-const STOP = new Set(
+export interface RagIngestInput {
+  source: string;
+  text: string;
+}
+
+export interface RagIngestFileInput {
+  source: string;
+  filePath: string;
+}
+
+export interface RagChunk {
+  id: string;
+  source: string;
+  text: string;
+  tokens: string[];
+  /** Serialized [term, normalized-frequency] pairs. Persisted as JSON. */
+  tf: Array<[string, number]>;
+}
+
+export interface RagSearchHit {
+  text: string;
+  source: string;
+  score: number;
+}
+
+export interface RagIndexOptions {
+  dir: string;
+  chunkSize?: number;
+  chunkOverlap?: number;
+  topK?: number;
+}
+
+const STOP: ReadonlySet<string> = new Set(
   ("a an and are as at be by for from has have he her his i in is it its of on or " +
     "she that the to was were will with you your this these those we us our they " +
     "them their but not no so if then than too very can could should would may might " +
@@ -16,7 +47,7 @@ const STOP = new Set(
     .split(/\s+/),
 );
 
-function tokenize(s) {
+function tokenize(s: string): string[] {
   // Match Unicode letters, Unicode marks, Unicode numbers, and
   // the ASCII underscore. The `\p{L}\p{N}` form covers the
   // non-ASCII scripts (Chinese, Thai, Arabic, Cyrillic, etc.)
@@ -24,13 +55,13 @@ function tokenize(s) {
   return (
     String(s)
       .toLowerCase()
-      .match(/[\p{L}\p{N}_]+/gu) || []
+      .match(/[\p{L}\p{N}_]+/gu) ?? []
   ).filter((t) => !STOP.has(t) && t.length > 1);
 }
 
-function chunkText(text, size, overlap) {
+function chunkText(text: string, size: number, overlap: number): string[] {
   // Chunk by character windows with word-boundary snapping.
-  const chunks = [];
+  const chunks: string[] = [];
   const step = Math.max(1, size - overlap);
   for (let i = 0; i < text.length; i += step) {
     const end = Math.min(text.length, i + size);
@@ -46,8 +77,8 @@ function chunkText(text, size, overlap) {
   return chunks;
 }
 
-function termFreq(tokens) {
-  const tf = new Map();
+function termFreq(tokens: string[]): Map<string, number> {
+  const tf = new Map<string, number>();
   for (const t of tokens) tf.set(t, (tf.get(t) ?? 0) + 1);
   const len = tokens.length || 1;
   for (const [k, v] of tf) tf.set(k, v / len);
@@ -55,34 +86,42 @@ function termFreq(tokens) {
 }
 
 export class RagIndex {
-  constructor({ dir, chunkSize = 400, chunkOverlap = 50, topK = 4 }) {
+  public dir: string;
+  public chunkSize: number;
+  public chunkOverlap: number;
+  public topK: number;
+  public chunks: RagChunk[] = [];
+  private df: Map<string, number> = new Map();
+  private docs: number = 0;
+  /** Internal lock for serializing concurrent ingest calls. */
+  private _lock: Promise<unknown> = Promise.resolve();
+
+  constructor({ dir, chunkSize = 400, chunkOverlap = 50, topK = 4 }: RagIndexOptions) {
     this.dir = dir;
     this.chunkSize = chunkSize;
     this.chunkOverlap = chunkOverlap;
     this.topK = topK;
-    this.chunks = []; // { id, source, text, tokens, tf }
-    this.df = new Map(); // doc frequency per term
-    this.docs = 0;
   }
 
-  async _ensure() {
+  async _ensure(): Promise<void> {
     await fs.mkdir(this.dir, { recursive: true });
     const file = path.join(this.dir, "chunks.json");
     try {
       const raw = await fs.readFile(file, "utf8");
-      this.chunks = JSON.parse(raw);
+      const parsed = JSON.parse(raw) as RagChunk[];
+      this.chunks = Array.isArray(parsed) ? parsed : [];
       this._rebuildIndex();
     } catch {
       this.chunks = [];
     }
   }
 
-  async _persist() {
+  async _persist(): Promise<void> {
     await fs.mkdir(this.dir, { recursive: true });
     await fs.writeFile(path.join(this.dir, "chunks.json"), JSON.stringify(this.chunks));
   }
 
-  _rebuildIndex() {
+  private _rebuildIndex(): void {
     this.df = new Map();
     this.docs = this.chunks.length;
     for (const c of this.chunks) {
@@ -91,12 +130,12 @@ export class RagIndex {
     }
   }
 
-  _idf(term) {
+  private _idf(term: string): number {
     const df = this.df.get(term) ?? 0;
     return Math.log(1 + (this.docs + 1) / (df + 1));
   }
 
-  async ingest({ source, text }) {
+  async ingest({ source, text }: RagIngestInput): Promise<number> {
     return this._withLock(async () => {
       await this._ensure();
       const pieces = chunkText(text, this.chunkSize, this.chunkOverlap);
@@ -124,15 +163,17 @@ export class RagIndex {
     });
   }
 
-  // Simple async mutex so concurrent ingest calls from the
-  // same RagIndex instance don't lose chunks. Without this, two
-  // ingests that started at the same time would each read the
-  // existing chunks array, each push, and then one of the two
-  // _persist() calls would overwrite the other.
-  async _withLock(fn) {
-    let release;
-    const next = new Promise((res) => { release = res; });
-    const prev = this._lock || Promise.resolve();
+  /**
+   * Simple async mutex so concurrent ingest calls from the
+   * same RagIndex instance don't lose chunks. Without this, two
+   * ingests that started at the same time would each read the
+   * existing chunks array, each push, and then one of the two
+   * _persist() calls would overwrite the other.
+   */
+  private async _withLock<T>(fn: () => Promise<T>): Promise<T> {
+    let release!: () => void;
+    const next = new Promise<void>((res) => { release = res; });
+    const prev = this._lock ?? Promise.resolve();
     this._lock = next;
     try {
       await prev;
@@ -142,18 +183,18 @@ export class RagIndex {
     }
   }
 
-  async ingestFile({ source, filePath }) {
+  async ingestFile({ source, filePath }: RagIngestFileInput): Promise<number> {
     const text = await fs.readFile(filePath, "utf8");
     return this.ingest({ source, text });
   }
 
-  async search(query, k = this.topK) {
+  async search(query: string, k: number = this.topK): Promise<RagSearchHit[]> {
     await this._ensure();
     const qTokens = tokenize(query);
     if (qTokens.length === 0 || this.chunks.length === 0) return [];
     const qTf = termFreq(qTokens);
     const scores = this.chunks.map((c) => {
-      const tfMap = new Map(c.tf);
+      const tfMap = new Map<string, number>(c.tf);
       let score = 0;
       for (const [t, qv] of qTf) {
         const tv = tfMap.get(t);
@@ -169,8 +210,8 @@ export class RagIndex {
       .map((s) => ({ text: s.chunk.text, source: s.chunk.source, score: s.score }));
   }
 
-  // Build a prompt context block from the top-k chunks.
-  async contextBlock(query, k = this.topK) {
+  /** Build a prompt context block from the top-k chunks. */
+  async contextBlock(query: string, k: number = this.topK): Promise<string> {
     const hits = await this.search(query, k);
     if (hits.length === 0) return "";
     return hits
