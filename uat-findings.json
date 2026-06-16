@@ -1,0 +1,231 @@
+{
+  "product": "EdgeWell v3.0.0 (chore/ts-pnpm-migration branch)",
+  "testedAt": "2026-06-16T17:00:00Z",
+  "commit": "2c4d274",
+  "verdict": "BLOCKED",
+  "persona": "First-time EdgeWell user; Node.js developer; 20-minute budget",
+  "surface": "cli",
+  "summary": "Two blocker-class doc/code-drift issues: README quickstart invocation (node bin/edgewell.js ...) fails on every example because the legacy bin/edgewell.js still imports the deleted src/index.js; and the README's documented npm install fails on the link: protocol. Additional high-severity bugs: a profile set --key value corruption bug, and the README's exact RAG example query returns no matches. Several medium-severity UX issues (--version dumps help; unknown command dumps full help; raw ENOENT/EISDIR errors leak from rag ingest; self-test runs 0 tests; version-history fails in a git checkout; vector dim inconsistent between doctor and vector stats; redact is uninvokable; seed count is off by ~20% on journal).",
+  "findings": [
+    {
+      "id": "UAT-FN-01",
+      "severity": "blocker",
+      "scenario": "S1, S10",
+      "surface": "cli",
+      "title": "README quickstart does not work — node bin/edgewell.js <cmd> fails with ERR_MODULE_NOT_FOUND for every documented example",
+      "repro": "Follow README step 1: `node bin/edgewell.js help`. Same for all 8 README quickstart commands.",
+      "expected": "Help screen (or the appropriate command output)",
+      "actual": "Error [ERR_MODULE_NOT_FOUND]: Cannot find module '.../src/index.js' imported from .../bin/edgewell.ts — 8/8 README examples fail",
+      "suggestedFix": "Delete the legacy `bin/edgewell.js` (or update it to forward to `bin/edgewell.ts`), and update the README to use `pnpm start -- <cmd>` (matching the actual `scripts.start` invocation) or `node dist/bin/edgewell.js <cmd>` (matching the actual `bin` field)."
+    },
+    {
+      "id": "UAT-FN-02",
+      "severity": "high",
+      "scenario": "S4",
+      "surface": "cli",
+      "title": "README's exact RAG example query returns no matches",
+      "repro": "`node --import tsx/esm bin/edgewell.js rag ingest data/sample_health_notes.txt` then `rag search \"how much water should I drink\"`",
+      "expected": "At least one matching chunk (the file contains the line 'Hydration: 2 liters of water a day supports kidney function.')",
+      "actual": "(no matches). Single-word queries like `rag search water` do return the relevant chunk, so the issue is with the multi-word query.",
+      "suggestedFix": "Inspect the TF-IDF query parser — likely a stop-word / tokenization mismatch for multi-word queries. Verify with the README's exact query string."
+    },
+    {
+      "id": "UAT-FN-03",
+      "severity": "blocker",
+      "scenario": "S1, S10",
+      "surface": "cli/docs",
+      "title": "README install command `npm install` fails; project requires pnpm",
+      "repro": "Follow README Install section: `npm install`",
+      "expected": "A working install",
+      "actual": "`npm error EUNSUPPORTEDPROTOCOL: Unsupported URL Type \"link:\"` for `@qvac/sdk` (which is `link:./vendor/qvac-sdk`) plus `npm warn Unknown project config \"onlyBuiltDependencies\"` for the `.npmrc` key that's valid for pnpm but not npm.",
+      "suggestedFix": "Update README to use `pnpm install` (or `corepack enable && pnpm install`) as the install command. The package.json pins `packageManager: pnpm@11.6.0`, so the install instructions must match."
+    },
+    {
+      "id": "UAT-FN-04",
+      "severity": "high",
+      "scenario": "S3",
+      "surface": "cli",
+      "title": "`profile set --key value` corrupts profile.json with leftover argv as keys",
+      "repro": "`edgewell profile set --name alex --goal sleep` (or any `--key value` invocation)",
+      "expected": "Reject with a clear error: `usage: edgewell profile set <key> <value> (positional args only)`",
+      "actual": "Persists `\"--name\": \"alex --goal sleep\"` as a real top-level key in data/profile.json, sets `createdAt`, and returns `set --name` as the success message.",
+      "suggestedFix": "In the `profile set` handler, reject any argv starting with `-` before consuming positional args, and add a unit test for the `--key value` case to lock the fix in."
+    },
+    {
+      "id": "UAT-FN-05",
+      "severity": "medium",
+      "scenario": "S2",
+      "surface": "cli",
+      "title": "`--version` flag silently ignored — prints the entire help screen",
+      "repro": "`edgewell --version`",
+      "expected": "`edgewell v3.0.0` (matches the `edgewell version` subcommand output)",
+      "actual": "Full 110-line help screen, exit 0",
+      "suggestedFix": "Handle `--version` / `-V` in the argument parser before the help path — print the version and exit 0."
+    },
+    {
+      "id": "UAT-FN-06",
+      "severity": "medium",
+      "scenario": "S3",
+      "surface": "cli",
+      "title": "`profile init` hangs silently when stdin is not a TTY",
+      "repro": "Run `edgewell profile init` in a non-interactive shell (e.g. CI)",
+      "expected": "Either create a default profile, or error: `profile init requires a TTY — use \\`profile set <key> <value>\\` for non-interactive setup`",
+      "actual": "Hangs at the `name [friend]:` readline prompt, then exits 0 with no profile.json written",
+      "suggestedFix": "Detect `!process.stdin.isTTY` and either fall through to a default profile or print a clear error and exit non-zero."
+    },
+    {
+      "id": "UAT-FN-07",
+      "severity": "medium",
+      "scenario": "S3",
+      "surface": "cli",
+      "title": "`doctor` falsely reports `profile readable name=friend` when data/profile.json is missing",
+      "repro": "Delete `data/profile.json`, run `edgewell doctor`",
+      "expected": "`WARN  no profile on disk — run \\`edgewell profile init\\``",
+      "actual": "`OK    profile readable  name=friend, lang=en` — the check is actually reading an in-memory default, not the on-disk file",
+      "suggestedFix": "Check the file's existence (or `existsSync`) before the readability probe, and report the actual on-disk state."
+    },
+    {
+      "id": "UAT-FN-08",
+      "severity": "medium",
+      "scenario": "S6",
+      "surface": "cli",
+      "title": "Inconsistent vector dimensions reported: doctor says 64, vector stats says 128",
+      "repro": "Run `edgewell doctor` then `edgewell vector stats` back-to-back on the same data",
+      "expected": "Same dim in both",
+      "actual": "`dim=64` from doctor vs `dim: 128` from vector stats",
+      "suggestedFix": "Resolve the dim to a single source of truth (config or constant) and have both commands read from it. Likely one path is reading the constructor default and the other is reading the runtime value."
+    },
+    {
+      "id": "UAT-FN-09",
+      "severity": "medium",
+      "scenario": "S6, S8",
+      "surface": "cli",
+      "title": "`redact` command cannot be invoked from the CLI",
+      "repro": "`edgewell redact \"Contact me at john@example.com\"` and `edgewell redact --text \"Contact me at john@example.com\"`",
+      "expected": "Redacted text in both cases",
+      "actual": "Both invocations return `usage: edgewell redact <text|json> <...>`",
+      "suggestedFix": "Either implement the positional-text path, or update the usage to spell out the expected invocation (e.g. `redact <text|json> [more chunks...]`). Add a worked example to the help screen."
+    },
+    {
+      "id": "UAT-FN-10",
+      "severity": "medium",
+      "scenario": "S6",
+      "surface": "cli",
+      "title": "`self-test` reports 'self-test passed' while running 0 tests",
+      "repro": "`edgewell self-test`",
+      "expected": "Run the project's test suite and report a real pass/fail count",
+      "actual": "`tests 0, suites 0, pass 0, fail 0, ... self-test passed`",
+      "suggestedFix": "Wire `self-test` to `child_process.spawnSync('node', ['--test', 'test/*.test.ts'])` (or the equivalent for the compiled `test/*.test.js`); or rename to `self-check` if it really is just an internal smoke probe, and have it actually exercise something."
+    },
+    {
+      "id": "UAT-FN-11",
+      "severity": "medium",
+      "scenario": "S6",
+      "surface": "cli",
+      "title": "`version-history` says 'not a git checkout or CHANGELOG not tracked' inside a git checkout with a tracked CHANGELOG.md",
+      "repro": "Run `edgewell version-history` from the repo root (which is a git repo, with CHANGELOG.md tracked)",
+      "expected": "List of recent CHANGELOG.md sections / commits",
+      "actual": "`not a git checkout or CHANGELOG not tracked`",
+      "suggestedFix": "Fix the git/CHANGELOG detection in the `version-history` handler — likely a path resolution issue (relative to CWD vs. `import.meta.url`). Add a regression test that runs from the repo root."
+    },
+    {
+      "id": "UAT-FN-12",
+      "severity": "medium",
+      "scenario": "S9",
+      "surface": "cli",
+      "title": "`seed N` consistently undercounts journal entries by ~20%",
+      "repro": "`edgewell seed 10` → reports 8 journal entries; `edgewell seed 10000` → reports 9001 journal entries (expense count is correct in both cases)",
+      "expected": "`seeded 10 journal entries and 10 expenses`",
+      "actual": "`seeded 8 journal entries and 10 expenses` (and the same ~20% gap at scale)",
+      "suggestedFix": "Inspect the journal-loop in the seed handler — likely an off-by-one in a `for` bound or a category-fork that skips some iterations. Add a unit test: `assert(seed(10).journals === 10)`."
+    },
+    {
+      "id": "UAT-FN-13",
+      "severity": "medium",
+      "scenario": "S8",
+      "surface": "cli",
+      "title": "Unknown subcommand dumps the entire 110-line help screen",
+      "repro": "`edgewell frobnicate`",
+      "expected": "`unknown command: frobnicate\\n\\nDid you mean: ...\\n\\nRun \\`edgewell help\\` for the full list.`",
+      "actual": "Full 110-line help screen, exit 2",
+      "suggestedFix": "Catch the unknown-command case before the help-path branch and print a one-line error with a `Did you mean:` suggestion (use Levenshtein over the known command list)."
+    },
+    {
+      "id": "UAT-FN-14",
+      "severity": "medium",
+      "scenario": "S8",
+      "surface": "cli",
+      "title": "Raw `ENOENT` / `EISDIR` errors leak from Node's `fs` layer for rag ingest and multimodal",
+      "repro": "`rag ingest /tmp/nope.txt` and `rag ingest data` (a directory)",
+      "expected": "`file not found: /tmp/nope.txt` and `data is a directory, not a file` — matching the friendly style already used by `import` and `compare`",
+      "actual": "`error: ENOENT: no such file or directory, open '...'` and `error: EISDIR: illegal operation on a directory, read`",
+      "suggestedFix": "Wrap `fs.readFile` calls in `rag ingest` and `multimodal` in a try/catch that maps `ENOENT` → `file not found:` and `EISDIR` → `not a file:`. The `import` and `compare` handlers already do this; lift that helper into a shared module."
+    },
+    {
+      "id": "UAT-FN-15",
+      "severity": "medium",
+      "scenario": "S8",
+      "surface": "cli",
+      "title": "`seed` accepts arbitrarily large N with no cap, no progress, no warning",
+      "repro": "`edgewell seed 1000000`",
+      "expected": "Either cap at a reasonable number (e.g. 100 000) and warn, or print a progress line every 1 000 rows, or both",
+      "actual": "Hung for >60 s with no output and no progress indicator before being killed",
+      "suggestedFix": "Add a soft cap (e.g. `if (n > 100000) { console.warn('... capping at 100000'); n = 100000; }`) and a `process.stdout.write` progress tick every 1 000 rows."
+    },
+    {
+      "id": "UAT-FN-16",
+      "severity": "low",
+      "scenario": "S4",
+      "surface": "cli",
+      "title": "`chat` only processes one piped input then exits cleanly — no multi-line REPL for scripts",
+      "repro": "`printf \"hi\\nexit\\n\" | edgewell chat`",
+      "expected": "Process both `hi` and `exit`, or read until EOF and process all lines",
+      "actual": "Only `hi` is processed; the second `you>` prompt prints, then EOF exits 0",
+      "suggestedFix": "If `!process.stdin.isTTY`, read all of stdin (e.g. via `readline` accumulating `line` events until `close`) and process each line; honour `exit`/`quit` as a graceful stop."
+    },
+    {
+      "id": "UAT-FN-17",
+      "severity": "low",
+      "scenario": "S5",
+      "surface": "cli",
+      "title": "`expense add 250` (no category) silently defaults to `'other'` with no warning",
+      "repro": "`edgewell expense add 250`",
+      "expected": "Error: `missing category — usage: edgewell expense add <amount> <category>`",
+      "actual": "`logged 250 (other)` — quietly mis-tagging data",
+      "suggestedFix": "Add a positional-arg-count check in the `expense add` handler: if `args.length < 1`, print usage and exit 2."
+    },
+    {
+      "id": "UAT-FN-18",
+      "severity": "low",
+      "scenario": "S6",
+      "surface": "cli",
+      "title": "`version` and `version-history` disagree on what counts as a release",
+      "repro": "Run `edgewell version` (prints `v3.0.0`) and `edgewell version-history` (prints `not a git checkout or CHANGELOG not tracked`)",
+      "expected": "Coherent narrative — at minimum, `version-history` should be able to find the v3.0.0 entry in CHANGELOG.md",
+      "actual": "`v3.0.0` exists; the changelog-history walker can't find it (see UAT-FN-11 for the underlying git-detection bug)",
+      "suggestedFix": "Fix the underlying git-detection bug (UAT-FN-11); this finding will resolve as a side effect."
+    },
+    {
+      "id": "UAT-FN-19",
+      "severity": "low",
+      "scenario": "S2",
+      "surface": "cli/help",
+      "title": "Help screen lists 60+ top-level commands plus a 138-command wall of name-only 'additional commands'",
+      "repro": "Run `edgewell help` and scroll to the bottom",
+      "expected": "8–12 top-level commands with descriptions; advanced commands in `edgewell command-list` only",
+      "actual": "60+ described top-level commands + 138 additional commands dumped as a name-only wall on the first paint of help",
+      "suggestedFix": "Move the `tag-*`, `journal-entries-*`, `expenses-entries-*` families behind `edgewell command-list` (or group them under a single `tag <sub>` / `journal <sub>` namespace) so the default help screen is scannable."
+    },
+    {
+      "id": "UAT-FN-20",
+      "severity": "low",
+      "scenario": "S6",
+      "surface": "cli",
+      "title": "`where` shows `profile: data/profile.json` even when the file does not exist",
+      "repro": "Delete `data/profile.json`; run `edgewell where`",
+      "expected": "`profile: (not yet created — run \\`edgewell profile init\\`)`",
+      "actual": "`profile: /…/data/profile.json` (same line as when the file exists)",
+      "suggestedFix": "In the `where` handler, check existence for each listed path and append a `(not yet created)` marker when missing — same as `size` already does (it shows `0 B`)."
+    }
+  ]
+}
