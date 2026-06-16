@@ -104,11 +104,23 @@ export async function helpCommand(args: string[] = []): Promise<void> {
     .sort();
   if (extras.length) {
     lines.push("");
-    lines.push(`${c.bold("More commands:")} (${extras.length} additional, run \`edgewell command-list\` to see them all)`);
-    const colWidth = 20;
-    const cols = Math.max(1, Math.floor((process.stdout.columns || 80) / (colWidth + 2)));
-    for (let i = 0; i < extras.length; i += cols) {
-      lines.push("  " + extras.slice(i, i + cols).map((e) => c.dim(e.padEnd(colWidth))).join(" "));
+    lines.push(`${c.bold("More commands:")} (${extras.length} additional — run \`edgewell command-list\` for the full list)`);
+    // Group by first dotted segment so the wall collapses into a
+    // readable summary. `journal-busiest-day` becomes `journal-*`.
+    const groups = new Map<string, number>();
+    for (const e of extras) {
+      const dash = e.indexOf("-");
+      const stem = dash > 0 ? e.slice(0, dash) : e;
+      groups.set(stem, (groups.get(stem) ?? 0) + 1);
+    }
+    const sortedStems = [...groups.entries()].sort((a, b) => b[1] - a[1]);
+    const summary = sortedStems
+      .slice(0, 8)
+      .map(([stem, n]) => c.dim(`${stem}-* (${n})`))
+      .join("  ");
+    if (summary) lines.push("  " + summary);
+    if (sortedStems.length > 8) {
+      lines.push("  " + c.dim(`… and ${sortedStems.length - 8} more stems`));
     }
   }
   lines.push("");

@@ -10,7 +10,7 @@ export async function expenseCommand(args, ew) {
   if (sub === "add") {
     const [amtStr, ...catParts] = rest;
     const amt = Number(amtStr);
-    const category = catParts.join(" ") || "other";
+    const category = catParts.join(" ").trim();
     if (!Number.isFinite(amt)) {
       console.error("usage: edgewell expense add <amount> <category>");
       console.error("       amount must be a finite number");
@@ -18,14 +18,16 @@ export async function expenseCommand(args, ew) {
     }
     if (amt < EXPENSE_MIN) {
       console.error(`amount must be >= ${EXPENSE_MIN} (got ${amt})`);
+      console.error("usage: edgewell expense add <amount> <category>");
       process.exit(2);
     }
     if (amt > EXPENSE_MAX) {
       console.error(`amount must be <= ${EXPENSE_MAX} (got ${amt})`);
       process.exit(2);
     }
-    if (!category.trim()) {
-      console.error("category must not be empty");
+    if (!category) {
+      console.error("usage: edgewell expense add <amount> <category>");
+      console.error("       (category is required; \"other\" is no longer auto-filled)");
       process.exit(2);
     }
     await ew.expenses.append({ kind: "expense", amount: amt, category });

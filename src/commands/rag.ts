@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { promises as fs } from "node:fs";
 import path from "node:path";
 import { c, header } from "../cli.js";
 
@@ -11,6 +12,25 @@ export async function ragCommand(args, ew) {
       process.exit(2);
     }
     const abs = path.resolve(file);
+    // Wrap fs errors so the user sees the same friendly
+    // "file not found: <path>" / "<path> is a directory, not a file"
+    // style that `import` and `compare` already use. The raw
+    // ENOENT/EISDIR text from Node leaks otherwise.
+    try {
+      const stat = await fs.stat(abs);
+      if (stat.isDirectory()) {
+        console.error(c.red(`${abs} is a directory, not a file`));
+        process.exit(1);
+      }
+    } catch (err) {
+      const e = err as NodeJS.ErrnoException;
+      if (e?.code === "ENOENT") {
+        console.error(c.red(`file not found: ${abs}`));
+        process.exit(1);
+      }
+      console.error(c.red(`cannot read ${abs}: ${e?.message ?? err}`));
+      process.exit(1);
+    }
     const n = await ew.rag.ingestFile({ source: abs, filePath: abs });
     console.log(c.green(`ingested ${n} chunks from ${abs}`));
   } else if (sub === "search") {

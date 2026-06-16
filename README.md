@@ -69,19 +69,25 @@ capabilities and keeps every v2.0.0 surface area intact.
 ## Requirements
 
 - Node.js >= 22.17
-- npm >= 10.9
+- pnpm >= 11 (the project pins `packageManager: pnpm@11.6.0`)
 - (Optional) `@qvac/sdk` for real on-device inference
 
 ## Install
 
+EdgeWell uses **pnpm** (pinned in `package.json`). `npm install`
+will fail on the local `link:` dependency and the `.npmrc`
+`onlyBuiltDependencies` key.
+
 ```bash
 cd edgewell
-npm install
-# Run unit tests (no SDK required)
-node --test test/*.test.js
+pnpm install
+pnpm build          # compile src/*.ts -> dist/
+
+# Optional: run the unit tests (no SDK required)
+pnpm test
 ```
 
-If you want real model inference, install the QVAC SDK. v1 of EdgeWell
+If you want real model inference, install the QVAC SDK. EdgeWell
 is structured so the rest of the code paths work without it.
 
 ## Quick start
@@ -105,6 +111,13 @@ node bin/edgewell.js ask "How can I save 20% of my income?"
 # 5. Start an interactive chat
 node bin/edgewell.js chat
 ```
+
+`bin/edgewell.js` is a self-bootstrapping shim that spawns
+`bin/edgewell.ts` under `node --import tsx/esm`, so the
+`node bin/edgewell.js <cmd>` form works without any extra flags.
+If you'd rather use the compiled output, run
+`node dist/bin/edgewell.js <cmd>` after `pnpm build`. Both forms
+accept the same flags.
 
 ## P2P delegation
 

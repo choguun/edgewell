@@ -16,6 +16,16 @@ async function check(name, fn) {
   }
 }
 
+async function profileExists(filePath) {
+  const fs = await import("node:fs/promises");
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function doctorCommand(_args, ew) {
   header("EdgeWell doctor");
   const { cfg, rag, profile, journal, expenses } = ew;
@@ -54,6 +64,14 @@ export async function doctorCommand(_args, ew) {
   });
 
   await check("profile readable", async () => {
+    // Distinguish "file exists with these values" from "file is
+    // missing, falling back to in-memory defaults". The previous
+    // version always reported the defaults, which made doctor
+    // lie about the on-disk state.
+    const onDisk = await profileExists(profile.filePath);
+    if (!onDisk) {
+      throw new Error("no profile on disk — run `edgewell profile init`");
+    }
     const p = await profile.load();
     return `name=${p.name}, lang=${p.language}`;
   });
@@ -79,10 +97,12 @@ export async function doctorCommand(_args, ew) {
     checks.push({ name: "p2p peer health", ok: true, info: "delegation disabled (skipped)" });
   }
 
-  // v3.0.0 checks
+  // v3.0.0 checks. Use the runtime dim from cfg.rag.dim rather
+  // than the default 64 in VectorIndex's constructor, so the
+  // reported dim matches what `vector stats` would show.
   await check("vector index available", async () => {
     const { VectorIndex } = await import("../vector-index.js");
-    const idx = new VectorIndex({ dim: 64 });
+    const idx = new VectorIndex({ dim: cfg.rag.dim });
     return `VectorIndex ready (dim=${idx.dim})`;
   });
 

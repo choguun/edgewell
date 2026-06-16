@@ -12,6 +12,13 @@ export async function profileCommand(args, ew) {
       console.error("usage: edgewell profile set <key> <value>");
       process.exit(2);
     }
+    // Reject flag-shaped keys so `profile set --name alex` does not
+    // silently write `--name: "alex"` into the profile.
+    if (k.startsWith("-")) {
+      console.error(c.red(`'${k}' looks like a flag, not a profile key`));
+      console.error("usage: edgewell profile set <key> <value>");
+      process.exit(2);
+    }
     const cur = await ew.profile.load();
     const raw = v.join(" ");
     // Try JSON first so users can pass structured values.
@@ -56,6 +63,22 @@ export async function profileCommand(args, ew) {
     await ew.profile.save(next);
     console.log(c.green(`set ${k}`));
   } else if (sub === "init") {
+    // If stdin is not a TTY (e.g. piped input from a script or
+    // a CI runner), fall back to writing a default profile
+    // instead of hanging on a readline prompt that never
+    // resolves.
+    if (!process.stdin.isTTY) {
+      const cur = await ew.profile.load();
+      const next = {
+        ...cur,
+        name: cur.name,
+        language: cur.language,
+        baseline: { ...cur.baseline },
+      };
+      await ew.profile.save(next);
+      console.log(c.green("wrote default profile (no TTY; pass a TTY to run the wizard)"));
+      return;
+    }
     await withReadline(async (rl) => {
       const cur = await ew.profile.load();
       const name = (await rl.question(`name [${cur.name}]: `)) || cur.name;

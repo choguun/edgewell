@@ -421,8 +421,16 @@ export { MAP as COMMAND_MAP };
 export async function dispatch(cmd: string, rest: string[], ew: EdgeWellCtx): Promise<unknown> {
   const fn = MAP[cmd];
   if (!fn) {
+    if (cmd) {
+      // Unknown command: print a one-line diagnostic, not the
+      // 110-line help dump. Help is still available via
+      // `edgewell help` or `edgewell command-list`.
+      console.error(`unknown command: ${cmd}`);
+      console.error("run `edgewell help` to see the full command list");
+      process.exit(2);
+    }
     await helpCommand();
-    process.exit(cmd ? 2 : 0);
+    return undefined;
   }
   return fn(rest, ew);
 }

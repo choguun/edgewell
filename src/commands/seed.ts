@@ -6,6 +6,8 @@
 
 import { c } from "../cli.js";
 
+const MAX_SEED = 100_000;
+
 function rng(seed) {
   let x = seed >>> 0;
   return () => {
@@ -35,6 +37,13 @@ export async function seedCommand(args, ew) {
     console.error("usage: edgewell seed <count>");
     process.exit(2);
   }
+  // Cap N so a typo (or a script bug) doesn't write 10^7 rows and
+  // freeze the user's terminal. UAT-FN-15.
+  if (count > MAX_SEED) {
+    console.error(c.red(`seed count ${count} exceeds cap of ${MAX_SEED}`));
+    console.error(`(use a smaller number, or run multiple times if you really need more)`);
+    process.exit(2);
+  }
   const seed = (count * 7919 + 31) >>> 0;
   const r = rng(seed);
   const baseTs = Date.UTC(2026, 0, 1, 12, 0, 0);
@@ -42,20 +51,27 @@ export async function seedCommand(args, ew) {
   const jKeys = new Set((await ew.journal.readAll()).map((x) => `${x._ts}|${x.text}`));
   const eKeys = new Set((await ew.expenses.readAll()).map((x) => `${x._ts}|${x.amount}|${x.category}`));
   for (let i = 0; i < count; i++) {
+    // Show progress every 10% so the user knows it's still alive.
+    if (i % Math.max(1, Math.floor(count / 10)) === 0 && count > 100) {
+      process.stderr.write(`\rseeding… ${Math.floor((i / count) * 100)}%`);
+    }
     const day = new Date(baseTs + i * 86400000).toISOString();
-    const text = PHRASES[Math.floor(r() * PHRASES.length)];
+    const text = PHRASES[i % PHRASES.length];
     const k = `${day}|${text}`;
     if (!jKeys.has(k)) {
       await ew.journal.append({ kind: "journal", _ts: day, text, tags: ["seed"] });
       j++;
     }
+    // Mix in (i, count) so the expense pattern varies with run-size
+    // even though the journal phrase set is small and cycled.
     const amount = Number(Math.max(0, Math.min(1_000_000_000, r() * 30 + 1)).toFixed(2));
-    const cat = CATEGORIES[Math.floor(r() * CATEGORIES.length)];
+    const cat = CATEGORIES[(Math.floor(r() * CATEGORIES.length) + i) % CATEGORIES.length];
     const ek = `${day}|${amount}|${cat}`;
     if (!eKeys.has(ek)) {
       await ew.expenses.append({ kind: "expense", _ts: day, amount, category: cat, note: "seed" });
       e++;
     }
   }
+  if (count > 100) process.stderr.write(`\rseeding… 100%\n`);
   console.log(c.green(`seeded ${j} journal entries and ${e} expenses`));
 }
