@@ -73,5 +73,18 @@ export async function seedCommand(args, ew) {
     }
   }
   if (count > 100) process.stderr.write(`\rseeding… 100%\n`);
-  console.log(c.green(`seeded ${j} journal entries and ${e} expenses`));
+  const jSkipped = count - j;
+  const eSkipped = count - e;
+  if (j === 0 && e === 0) {
+    // All entries were already present. Tell the user the seed
+    // is a no-op rather than printing "seeded 0" and leaving
+    // them to wonder whether the command is broken.
+    console.log(c.dim(`no new entries (already seeded; run with a fresh data/ to add ${count} new)`));
+  } else {
+    const skipped =
+      jSkipped + eSkipped > 0
+        ? c.dim(` (skipped ${jSkipped} journal + ${eSkipped} expenses already present)`)
+        : "";
+    console.log(c.green(`seeded ${j} journal entries and ${e} expenses`) + skipped);
+  }
 }
