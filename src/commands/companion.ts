@@ -5,10 +5,13 @@
 // endpoints to a paired phone, and announces itself on the LAN via
 // the mDNS stub.
 
+import path from "node:path";
+import { promises as fs } from "node:fs";
 import { header, c, parseFlags } from "../cli.js";
 import { startCompanion } from "../companion/server.js";
 import { makeAnnouncer, buildServiceUrl } from "../companion/mdns.js";
 import { newSecret, signToken } from "../companion/auth.js";
+import { projectRoot } from "../config.js";
 
 export async function companionCommand(args, ew) {
   const flags = parseFlags(args, {
@@ -16,9 +19,19 @@ export async function companionCommand(args, ew) {
     port: 8787,
     auth: true,
     "print-token": false,
+    "allow-privileged": false,
   });
   const host = String(flags.host);
   const port = Number(flags.port);
+  const allowPrivileged = flags["allow-privileged"] === true || flags["allow-privileged"] === "true";
+  // Refuse privileged ports (<1024) unless the user opts in. On
+  // macOS this would silently bind anyway; on Linux it errors
+  // with EACCES, which is the worst possible UX.
+  if (port < 1024 && !allowPrivileged) {
+    console.error(c.red(`refusing to bind privileged port ${port}`));
+    console.error("pass --allow-privileged to bind anyway (requires root on most systems)");
+    process.exit(2);
+  }
   const useAuth = flags.auth !== false && flags.auth !== "false";
   let secret = null;
   if (useAuth) {
@@ -28,9 +41,20 @@ export async function companionCommand(args, ew) {
       console.log(c.cyan(`bearer token: ${token}`));
     }
   }
+  // Default webDir to the bundled web/ folder under the project
+  // root. Works in both dev and built layouts. Fall back to
+  // null (no static serving) if the directory is missing.
+  const candidateWebDir = path.join(projectRoot(), "web");
+  let webDir: string | null = candidateWebDir;
+  try {
+    await fs.access(candidateWebDir);
+  } catch {
+    webDir = null;
+  }
   header(`EdgeWell companion on ${host}:${port}`);
   console.log(c.dim(`auth: ${useAuth ? "enabled" : "disabled"}`));
-  const { server, port: actualPort } = await startCompanion({ ew, secret, host, port });
+  if (webDir) console.log(c.dim(`serving web UI from ${webDir}`));
+  const { server, port: actualPort } = await startCompanion({ ew, secret, host, port, webDir });
   const announcer = makeAnnouncer({ name: "edgewell", host, port: actualPort });
   await announcer.start();
   console.log(c.green(buildServiceUrl({ host, port: actualPort, name: "edgewell" })));

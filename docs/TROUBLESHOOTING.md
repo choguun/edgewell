@@ -2,18 +2,23 @@
 
 Common problems and how to fix them.
 
-## `npm install` fails on the QVAC peer deps
+## `npm install` fails
 
-The `@qvac/sdk` package pulls in `bare-*` and other Bare runtime
-peers. If you are on Node.js only, you can ignore these by
-passing `--legacy-peer-deps` to npm:
+EdgeWell's `@qvac/sdk` dependency is a `link:./vendor/qvac-sdk`
+reference. npm does not support the `link:` URL type and fails
+with `EUNSUPPORTEDPROTOCOL` regardless of `--legacy-peer-deps` or
+any other flag.
+
+**Use pnpm** (the version is pinned in `package.json`):
 
 ```bash
-npm install --legacy-peer-deps
+pnpm install
+pnpm build
 ```
 
-EdgeWell still works without the SDK — the chat and ask commands
-return a placeholder until a real model is loaded.
+`@qvac/sdk` is loaded lazily; the CLI still works without a
+real model installed — the chat and ask commands return a stub
+completion until a real model is loaded.
 
 ## `edgewell doctor` complains about the data dir
 

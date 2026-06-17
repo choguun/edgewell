@@ -126,8 +126,35 @@ export const DEFAULTS: EdgeWellConfig = {
   },
 };
 
+// System roots we refuse to write into when run as root. A typo
+// in EDGEWELL_DATA_DIR like /etc or /usr would otherwise silently
+// succeed and corrupt the user's data layout.
+const ROOT_BLOCKLIST = ["/etc", "/usr", "/bin", "/sbin", "/var", "/boot", "/System", "/Library"];
+
+function resolveDataDir(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return DEFAULTS.data.dir;
+  const abs = resolve(trimmed);
+  // Only enforce the blocklist when running as root (uid 0). On
+  // a normal user account, /etc/edgewell etc. would just fail
+  // with EACCES anyway.
+  const isRoot = typeof process.getuid === "function" && process.getuid() === 0;
+  if (isRoot) {
+    for (const root of ROOT_BLOCKLIST) {
+      if (abs === root || abs.startsWith(root + "/")) {
+        throw new Error(
+          `EDGEWELL_DATA_DIR=${raw} resolves to ${abs}, a system root; refusing to write there. ` +
+          `Drop root, set EDGEWELL_DATA_DIR to a writable path, or unset the variable.`,
+        );
+      }
+    }
+  }
+  return abs;
+}
+
 export function loadConfig(overrides: Record<string, unknown> = {}): EdgeWellConfig {
   const cfg = structuredClone(DEFAULTS);
+  if (process.env.EDGEWELL_DATA_DIR) cfg.data.dir = resolveDataDir(process.env.EDGEWELL_DATA_DIR);
   if (process.env.EDGEWELL_MODEL) cfg.localModel = process.env.EDGEWELL_MODEL;
   if (process.env.EDGEWELL_DELEGATE_MODEL) cfg.delegateModel = process.env.EDGEWELL_DELEGATE_MODEL;
   if (process.env.EDGEWELL_P2P_HOST) cfg.p2p.host = process.env.EDGEWELL_P2P_HOST;

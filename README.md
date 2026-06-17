@@ -145,6 +145,7 @@ All knobs live in `src/config.js` and can be overridden by env vars:
 
 | Variable                  | Default                       | Description                       |
 |---------------------------|-------------------------------|-----------------------------------|
+| `EDGEWELL_DATA_DIR`       | `./data`                      | Override the data directory (relative or absolute path) |
 | `EDGEWELL_MODEL`          | `LLAMA_3_2_1B_INST_Q4_0`      | Local model id                    |
 | `EDGEWELL_DELEGATE_MODEL` | `LLAMA_3_1_8B_INST_Q4_K_M`    | Peer-side model id                |
 | `EDGEWELL_P2P_HOST`       | `127.0.0.1`                   | Peer host                         |

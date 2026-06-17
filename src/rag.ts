@@ -204,10 +204,21 @@ export class RagIndex {
       return { chunk: c, score };
     });
     scores.sort((a, b) => b.score - a.score);
-    return scores
-      .filter((s) => s.score > 0)
-      .slice(0, k)
-      .map((s) => ({ text: s.chunk.text, source: s.chunk.source, score: s.score }));
+    // De-duplicate by (source, text). Re-ingesting the same file
+    // generates fresh chunk ids but identical text, so without
+    // this dedup the same chunk appeared 4x in the UAT search
+    // output (UAT-FN-04). Keep the highest-scoring copy.
+    const seen = new Set<string>();
+    const deduped: Array<{ chunk: RagChunk; score: number }> = [];
+    for (const s of scores) {
+      if (s.score <= 0) continue;
+      const key = `${s.chunk.source}\u0000${s.chunk.text}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      deduped.push(s);
+      if (deduped.length >= k) break;
+    }
+    return deduped.map((s) => ({ text: s.chunk.text, source: s.chunk.source, score: s.score }));
   }
 
   /** Build a prompt context block from the top-k chunks. */

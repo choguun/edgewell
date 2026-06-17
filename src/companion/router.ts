@@ -20,10 +20,21 @@ const ROUTE_TIMEOUT_MS = Number.isFinite(_envTimeout) && _envTimeout > 0 ? _envT
 
 function send(res, status, body, headers = {}) {
   res.statusCode = status;
-  res.setHeader("content-type", "application/json; charset=utf-8");
-  for (const [k, v] of Object.entries(headers)) res.setHeader(k, v);
+  for (const [k, v] of Object.entries({ "content-type": "application/json; charset=utf-8", ...CORS_HEADERS, ...headers })) res.setHeader(k, v);
   res.end(JSON.stringify(body));
 }
+
+// CORS headers. The companion server is gated by bearer tokens;
+// CORS alone does not grant access, so allow-origin: * is safe
+// here. The bundled web UI is served from a different origin
+// (a phone browser pointed at the desktop IP), so without these
+// headers the browser refuses every cross-origin request.
+const CORS_HEADERS = {
+  "access-control-allow-origin": "*",
+  "access-control-allow-methods": "GET, POST, OPTIONS",
+  "access-control-allow-headers": "authorization, content-type",
+  "access-control-max-age": "600",
+};
 
 function match(method, url) {
   return { method: method.toUpperCase(), path: url.split("?")[0] };
@@ -65,6 +76,13 @@ export class Router {
 
   async handle(req, res) {
     const { method, path } = match(req.method ?? "GET", req.url ?? "/");
+    // Short-circuit OPTIONS preflight. Without this, every
+    // cross-origin browser call from the bundled web UI fails
+    // before the actual request is sent.
+    if (method === "OPTIONS") {
+      send(res, 204, "");
+      return;
+    }
     for (const r of this.routes) {
       if (r.method !== method) continue;
       const m = path.match(r.pattern);

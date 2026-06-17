@@ -51,20 +51,27 @@ export async function importCommand(args, ew) {
   const existingExpenses = await ew.expenses.readAll();
   const jKeys = new Set(existingJournal.map((e) => `${e._ts}|${e.text}`));
   const eKeys = new Set(existingExpenses.map((e) => `${e._ts}|${e.amount}|${e.category}`));
-  let addedJ = 0, addedE = 0;
+  let addedJ = 0, addedE = 0, skippedJ = 0, skippedE = 0;
   for (const e of data.journal ?? []) {
     const key = `${e._ts}|${e.text}`;
-    if (jKeys.has(key)) continue;
+    if (jKeys.has(key)) { skippedJ++; continue; }
     await ew.journal.append(e);
     jKeys.add(key);
     addedJ++;
   }
   for (const e of data.expenses ?? []) {
     const key = `${e._ts}|${e.amount}|${e.category}`;
-    if (eKeys.has(key)) continue;
+    if (eKeys.has(key)) { skippedE++; continue; }
     await ew.expenses.append(e);
     eKeys.add(key);
     addedE++;
   }
-  console.log(c.green(`imported ${addedJ} journal entries, ${addedE} expenses`));
+  // Always include the duplicate-skip count, even when 0, so the
+  // user understands why "imported 0" can happen after a
+  // successful import (UAT-FN-20).
+  const skipNote =
+    skippedJ + skippedE > 0
+      ? c.dim(` (skipped ${skippedJ} journal + ${skippedE} expenses already present)`)
+      : "";
+  console.log(c.green(`imported ${addedJ} journal entries, ${addedE} expenses`) + skipNote);
 }

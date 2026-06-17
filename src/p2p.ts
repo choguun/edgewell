@@ -16,6 +16,11 @@ import type { LLM, PromptInput } from "./llm-types.js";
 // params). Cast at the boundary until qvac.ts gets peeled
 // off @ts-nocheck. The behavioural contract matches.
 
+// Adapter: qvac.ts's EdgeWellLLM doesn't yet export a typed
+// LLM surface (its prompt/stream use destructured implicit-any
+// params). Cast at the boundary until qvac.ts gets peeled
+// off @ts-nocheck. The behavioural contract matches.
+
 // --- Server ---
 
 export interface StartServerOptions {
@@ -264,15 +269,18 @@ export interface DelegatingLLMOptions {
   peer: PeerClient;
   localModel?: string;
   sdkExports?: unknown;
+  logger?: Logger;
 }
 
 export class DelegatingLLM {
   public peer: PeerClient;
   public local: LLM;
+  public logger: Logger;
 
-  constructor({ peer, localModel, sdkExports }: DelegatingLLMOptions) {
+  constructor({ peer, localModel, sdkExports, logger = defaultLogger }: DelegatingLLMOptions) {
     this.peer = peer;
     this.local = new EdgeWellLLM({ model: localModel, sdkExports: (sdkExports ?? null) as never });
+    this.logger = logger;
   }
 
   async load(): Promise<string | null> {
@@ -291,8 +299,22 @@ export class DelegatingLLM {
         any = true;
         yield tok;
       }
-    } catch {
-      // Peer failed - fall through to local.
+    } catch (err) {
+      // Peer failed - log at warn so the user knows the
+      // delegation was attempted and fell through. Without
+      // this log, a user who set EDGEWELL_P2P_ENABLED=1 but
+      // has the peer offline would silently get the tiny
+      // local model with no diagnostic.
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.warn("p2p peer unreachable, falling back to local", {
+        host: this.peer.host,
+        port: this.peer.port,
+        err: msg,
+      });
+      // Also surface to stdout so interactive `chat` shows it.
+      process.stderr.write(
+        `[p2p] peer ${this.peer.host}:${this.peer.port} unreachable (${msg}) — falling back to local model\n`,
+      );
       any = false;
     }
     if (!any) {

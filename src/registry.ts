@@ -64,6 +64,10 @@ export function describeModel(id) {
   return MODELS[id] ?? { family: "unknown", tier: "unknown", offline: null };
 }
 
+export function modelExists(id) {
+  return typeof id === "string" && Object.prototype.hasOwnProperty.call(MODELS, id);
+}
+
 export function listModels() {
   return Object.entries(MODELS).map(([id, m]) => ({ id, ...m }));
 }

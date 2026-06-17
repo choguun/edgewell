@@ -1,10 +1,18 @@
 // @ts-nocheck
-import { listModels, describeModel } from "../registry.js";
+import { listModels, describeModel, modelExists } from "../registry.js";
 import { c } from "../cli.js";
 
 export async function modelsCommand(args) {
   const [sub, id] = args;
   if (sub === "describe" && id) {
+    // Distinguish "unknown id" from "known id with all-unknown
+    // fields". The previous version always returned a placeholder
+    // record with family: "unknown" etc., which the user couldn't
+    // tell apart from a real (but sparse) descriptor (UAT-FN-21).
+    if (!modelExists(id)) {
+      console.error(`no model with id "${id}"; run \`edgewell models list\` for the canonical ids`);
+      process.exit(1);
+    }
     console.log(JSON.stringify({ id, ...describeModel(id) }, null, 2));
     return;
   }

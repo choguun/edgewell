@@ -47,6 +47,7 @@ import { demoDataCommand } from "./commands/demo-data.js";
 import { wordCountCommand } from "./commands/word-count.js";
 import { lintCommand } from "./commands/lint.js";
 import { tokenCommand } from "./commands/token.js";
+import { rotateSecretCommand } from "./commands/rotate-secret.js";
 import { seedCommand } from "./commands/seed.js";
 import { versionHistoryCommand } from "./commands/version-history.js";
 import { versionCheckCommand } from "./commands/version-check.js";
@@ -262,6 +263,7 @@ const MAP_RAW: RawMap = {
   "word-count": wordCountCommand,
   lint: lintCommand,
   token: tokenCommand,
+  "rotate-secret": rotateSecretCommand,
   seed: seedCommand,
   "version-history": versionHistoryCommand,
   "version-check": versionCheckCommand,

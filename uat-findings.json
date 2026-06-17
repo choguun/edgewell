@@ -1,231 +1,344 @@
 {
-  "product": "EdgeWell v3.0.0 (chore/ts-pnpm-migration branch)",
-  "testedAt": "2026-06-16T17:00:00Z",
-  "commit": "2c4d274",
+  "product": "edgewell v3.0.0",
+  "testedAt": "2026-06-17T07:05:00Z",
+  "commit": "9a17098 (working tree dirty: README.md, src/config.ts, test/seed-integration.test.ts)",
   "verdict": "BLOCKED",
-  "persona": "First-time EdgeWell user; Node.js developer; 20-minute budget",
-  "surface": "cli",
-  "summary": "Two blocker-class doc/code-drift issues: README quickstart invocation (node bin/edgewell.js ...) fails on every example because the legacy bin/edgewell.js still imports the deleted src/index.js; and the README's documented npm install fails on the link: protocol. Additional high-severity bugs: a profile set --key value corruption bug, and the README's exact RAG example query returns no matches. Several medium-severity UX issues (--version dumps help; unknown command dumps full help; raw ENOENT/EISDIR errors leak from rag ingest; self-test runs 0 tests; version-history fails in a git checkout; vector dim inconsistent between doctor and vector stats; redact is uninvokable; seed count is off by ~20% on journal).",
+  "persona": "Alex, Node.js dev, has used task/notes/timewarrior, 20-min budget, has not seen the code",
+  "surface": "cli + static web ui (web/)",
+  "environment": {
+    "node": "v24.13.0",
+    "pnpm": "11.6.0",
+    "os": "Darwin arm64, macOS Darwin 25.5.0",
+    "viewport": "1280x800 desktop, 390x844 mobile (web smoke)"
+  },
+  "summary": {
+    "blocker": 3,
+    "high": 1,
+    "medium": 7,
+    "low": 13,
+    "total": 24
+  },
+  "scenarios": {
+    "S1_cold_install": {
+      "grade": "A",
+      "durationS": 4.1,
+      "notes": "pnpm install was cached, build 1s, test 2.7s (431/431 pass). npm install fails as documented; TROUBLESHOOTING.md advice is wrong."
+    },
+    "S2_first_impression": {
+      "grade": "A",
+      "durationS": 0.6,
+      "notes": "All five discovery commands clean, sub-150ms each."
+    },
+    "S3_config_init": {
+      "grade": "B",
+      "durationS": 1.0,
+      "notes": "doctor FAIL with clear fix message; profile set rejects key=value; profile show returns defaults as if real."
+    },
+    "S4_happy_path": {
+      "grade": "B",
+      "durationS": 1.0,
+      "notes": "README quickstart works end-to-end; RAG returns same chunk 4x (de-dup bug); ask output noisy (internal prompt + stub)."
+    },
+    "S5_edge_case": {
+      "grade": "B",
+      "durationS": 1.0,
+      "notes": "Unicode OK, decimals OK, multi-word category OK; empty bodies show only usage, journal find shows wrong usage, no max-amount cap, no max-body warning."
+    },
+    "S6_secondary": {
+      "grade": "C",
+      "durationS": 3.0,
+      "notes": "rotate-secret is documented but does not exist; companion server exposes only /health; serve exposes only /health and /completion; metrics are empty; redact doesn't read stdin; multimodal dumps the whole file."
+    },
+    "S7_resume": {
+      "grade": "A",
+      "durationS": 5.0,
+      "notes": "seed 10000 finishes in 1.5s; state persists; seed is idempotent with clear 'skipped N' message."
+    },
+    "S8_error_paths": {
+      "grade": "A-",
+      "durationS": 1.0,
+      "notes": "15 sabotages tested. seed cap error is best-in-class. profile set with --name=Alex silently stores a literal --name key. rotate-secret fails because it does not exist."
+    },
+    "S9_resource_limits": {
+      "grade": "A",
+      "durationS": 5.0,
+      "notes": "seed 100k in 1.5s, peak RSS ~103MB (Apple Silicon overestimate; actual ~13MB), no hangs."
+    },
+    "S10_readme_reality_check": {
+      "grade": "C",
+      "durationS": 2.0,
+      "notes": "5+ README examples work for quickstart. P2P example falls through to local stub without contacting peer. v3 web UI pitch does not work end-to-end."
+    },
+    "web_ui_smoke": {
+      "grade": "F",
+      "durationS": 1.5,
+      "notes": "CORS preflight blocked even on /health; /chat and /journal return 404; chat box shows 'error: Failed to fetch' for every message."
+    }
+  },
   "findings": [
     {
       "id": "UAT-FN-01",
-      "severity": "blocker",
-      "scenario": "S1, S10",
+      "severity": "medium",
+      "scenario": "S3",
       "surface": "cli",
-      "title": "README quickstart does not work — node bin/edgewell.js <cmd> fails with ERR_MODULE_NOT_FOUND for every documented example",
-      "repro": "Follow README step 1: `node bin/edgewell.js help`. Same for all 8 README quickstart commands.",
-      "expected": "Help screen (or the appropriate command output)",
-      "actual": "Error [ERR_MODULE_NOT_FOUND]: Cannot find module '.../src/index.js' imported from .../bin/edgewell.ts — 8/8 README examples fail",
-      "suggestedFix": "Delete the legacy `bin/edgewell.js` (or update it to forward to `bin/edgewell.ts`), and update the README to use `pnpm start -- <cmd>` (matching the actual `scripts.start` invocation) or `node dist/bin/edgewell.js <cmd>` (matching the actual `bin` field)."
+      "title": "profile set name=Alex rejected; the CLI requires two separate args",
+      "repro": "node bin/edgewell.js profile set name=Alex",
+      "expected": "Either the key=value form works, or the usage line shows an example.",
+      "actual": "usage: edgewell profile set <key> <value>",
+      "suggestedFix": "Accept key=value as a single arg, or document the space form in the usage line and show an example."
     },
     {
       "id": "UAT-FN-02",
-      "severity": "high",
-      "scenario": "S4",
+      "severity": "medium",
+      "scenario": "S3",
       "surface": "cli",
-      "title": "README's exact RAG example query returns no matches",
-      "repro": "`node --import tsx/esm bin/edgewell.js rag ingest data/sample_health_notes.txt` then `rag search \"how much water should I drink\"`",
-      "expected": "At least one matching chunk (the file contains the line 'Hydration: 2 liters of water a day supports kidney function.')",
-      "actual": "(no matches). Single-word queries like `rag search water` do return the relevant chunk, so the issue is with the multi-word query.",
-      "suggestedFix": "Inspect the TF-IDF query parser — likely a stop-word / tokenization mismatch for multi-word queries. Verify with the README's exact query string."
+      "title": "profile show on a fresh install returns the default profile as if it were the user's",
+      "repro": "rm -f data/profile.json && node bin/edgewell.js profile show",
+      "expected": "(no profile on disk) or empty defaults.",
+      "actual": "Populated JSON with name:\"friend\", default health/finance goals, baseline numbers, createdAt:null.",
+      "suggestedFix": "If the file does not exist, return null and have callers render '(no profile)'."
     },
     {
       "id": "UAT-FN-03",
-      "severity": "blocker",
-      "scenario": "S1, S10",
-      "surface": "cli/docs",
-      "title": "README install command `npm install` fails; project requires pnpm",
-      "repro": "Follow README Install section: `npm install`",
-      "expected": "A working install",
-      "actual": "`npm error EUNSUPPORTEDPROTOCOL: Unsupported URL Type \"link:\"` for `@qvac/sdk` (which is `link:./vendor/qvac-sdk`) plus `npm warn Unknown project config \"onlyBuiltDependencies\"` for the `.npmrc` key that's valid for pnpm but not npm.",
-      "suggestedFix": "Update README to use `pnpm install` (or `corepack enable && pnpm install`) as the install command. The package.json pins `packageManager: pnpm@11.6.0`, so the install instructions must match."
+      "severity": "low",
+      "scenario": "S3",
+      "surface": "cli",
+      "title": "profile init is advertised as a wizard but silently writes the defaults with no prompts",
+      "repro": "node bin/edgewell.js profile init (no TTY)",
+      "expected": "Either an interactive wizard (when a TTY is present) or a clear message that the wizard is unavailable.",
+      "actual": "'wrote default profile (no TTY; pass a TTY to run the wizard)' is printed even when no wizard exists.",
+      "suggestedFix": "Implement the wizard for TTY runs, or change the message to 'wrote default profile (no interactive prompts available in this mode)'."
     },
     {
       "id": "UAT-FN-04",
-      "severity": "high",
-      "scenario": "S3",
+      "severity": "medium",
+      "scenario": "S4",
       "surface": "cli",
-      "title": "`profile set --key value` corrupts profile.json with leftover argv as keys",
-      "repro": "`edgewell profile set --name alex --goal sleep` (or any `--key value` invocation)",
-      "expected": "Reject with a clear error: `usage: edgewell profile set <key> <value> (positional args only)`",
-      "actual": "Persists `\"--name\": \"alex --goal sleep\"` as a real top-level key in data/profile.json, sets `createdAt`, and returns `set --name` as the success message.",
-      "suggestedFix": "In the `profile set` handler, reject any argv starting with `-` before consuming positional args, and add a unit test for the `--key value` case to lock the fix in."
+      "title": "rag search returns the same chunk 4x - RAG results are not de-duplicated",
+      "repro": "rag ingest data/sample_health_notes.txt (already indexed) then rag search 'how much water'",
+      "expected": "At most one row per unique chunk id.",
+      "actual": "The Nutrition chunk from sample_health_notes.txt is listed 4 times with identical score 0.008.",
+      "suggestedFix": "De-duplicate by chunk id (or hash) in the search response formatter."
     },
     {
       "id": "UAT-FN-05",
-      "severity": "medium",
-      "scenario": "S2",
+      "severity": "low",
+      "scenario": "S4,S5,S8",
       "surface": "cli",
-      "title": "`--version` flag silently ignored — prints the entire help screen",
-      "repro": "`edgewell --version`",
-      "expected": "`edgewell v3.0.0` (matches the `edgewell version` subcommand output)",
-      "actual": "Full 110-line help screen, exit 0",
-      "suggestedFix": "Handle `--version` / `-V` in the argument parser before the help path — print the version and exit 0."
+      "title": "Empty / whitespace inputs to ask, rag search, journal add produce just a usage: line with no specific reason",
+      "repro": "ask '', rag search '', journal add ''",
+      "expected": "'question cannot be empty' / 'text cannot be empty'",
+      "actual": "usage: edgewell ask \"<question>\" (and equivalents)",
+      "suggestedFix": "Print the specific reason before the usage line."
     },
     {
       "id": "UAT-FN-06",
-      "severity": "medium",
-      "scenario": "S3",
+      "severity": "low",
+      "scenario": "S5",
       "surface": "cli",
-      "title": "`profile init` hangs silently when stdin is not a TTY",
-      "repro": "Run `edgewell profile init` in a non-interactive shell (e.g. CI)",
-      "expected": "Either create a default profile, or error: `profile init requires a TTY — use \\`profile set <key> <value>\\` for non-interactive setup`",
-      "actual": "Hangs at the `name [friend]:` readline prompt, then exits 0 with no profile.json written",
-      "suggestedFix": "Detect `!process.stdin.isTTY` and either fall through to a default profile or print a clear error and exit non-zero."
+      "title": "journal find <tag> (documented alias for journal-by-tag) prints the wrong usage line on bad input",
+      "repro": "node bin/edgewell.js journal find workout",
+      "expected": "usage: edgewell journal find <tag> (or similar)",
+      "actual": "usage: edgewell journal <add|list> -- <find> is missing from the printed list",
+      "suggestedFix": "Fix the usage line for the journal subcommand to enumerate add, list, find, tail, rm, restore, etc."
     },
     {
       "id": "UAT-FN-07",
       "severity": "medium",
-      "scenario": "S3",
+      "scenario": "S6",
       "surface": "cli",
-      "title": "`doctor` falsely reports `profile readable name=friend` when data/profile.json is missing",
-      "repro": "Delete `data/profile.json`, run `edgewell doctor`",
-      "expected": "`WARN  no profile on disk — run \\`edgewell profile init\\``",
-      "actual": "`OK    profile readable  name=friend, lang=en` — the check is actually reading an in-memory default, not the on-disk file",
-      "suggestedFix": "Check the file's existence (or `existsSync`) before the readability probe, and report the actual on-disk state."
+      "title": "rotate-secret is listed in docs/COMMANDS.md but does not exist as a command",
+      "repro": "node bin/edgewell.js rotate-secret",
+      "expected": "The command runs (rotate companion secret).",
+      "actual": "unknown command: rotate-secret",
+      "suggestedFix": "Either implement the command (it pairs with `token`) or remove it from COMMANDS.md."
     },
     {
       "id": "UAT-FN-08",
       "severity": "medium",
       "scenario": "S6",
       "surface": "cli",
-      "title": "Inconsistent vector dimensions reported: doctor says 64, vector stats says 128",
-      "repro": "Run `edgewell doctor` then `edgewell vector stats` back-to-back on the same data",
-      "expected": "Same dim in both",
-      "actual": "`dim=64` from doctor vs `dim: 128` from vector stats",
-      "suggestedFix": "Resolve the dim to a single source of truth (config or constant) and have both commands read from it. Likely one path is reading the constructor default and the other is reading the runtime value."
+      "title": "redact does not read from stdin despite being a natural pipe target",
+      "repro": "echo 'my email is j@x.com' | node bin/edgewell.js redact",
+      "expected": "The redacted text.",
+      "actual": "usage: edgewell redact <text> [...more words] ... (no stdin read)",
+      "suggestedFix": "Read from stdin if no positional arg is given; document the convention in the help line."
     },
     {
       "id": "UAT-FN-09",
-      "severity": "medium",
-      "scenario": "S6, S8",
-      "surface": "cli",
-      "title": "`redact` command cannot be invoked from the CLI",
-      "repro": "`edgewell redact \"Contact me at john@example.com\"` and `edgewell redact --text \"Contact me at john@example.com\"`",
-      "expected": "Redacted text in both cases",
-      "actual": "Both invocations return `usage: edgewell redact <text|json> <...>`",
-      "suggestedFix": "Either implement the positional-text path, or update the usage to spell out the expected invocation (e.g. `redact <text|json> [more chunks...]`). Add a worked example to the help screen."
+      "severity": "blocker",
+      "scenario": "S6,Web",
+      "surface": "cli+web",
+      "title": "The companion HTTP server (v3.0.0 headlined feature) implements only GET /health. All other advertised routes return 404.",
+      "repro": "(1) start edgewell companion --port N; (2) curl http://127.0.0.1:N/v1/journal (with or without token)",
+      "expected": "The companion server should expose /v1/chat, /v1/journal, /v1/agents, /v1/plan, /v1/ask (as the README/web UI imply).",
+      "actual": "{\"error\":\"not found\",\"method\":\"POST\",\"path\":\"/v1/journal\"} for every v1 route",
+      "suggestedFix": "Wire the existing internal Router (used in the unit tests) to the public companion server, or document the actual route names."
     },
     {
       "id": "UAT-FN-10",
-      "severity": "medium",
-      "scenario": "S6",
-      "surface": "cli",
-      "title": "`self-test` reports 'self-test passed' while running 0 tests",
-      "repro": "`edgewell self-test`",
-      "expected": "Run the project's test suite and report a real pass/fail count",
-      "actual": "`tests 0, suites 0, pass 0, fail 0, ... self-test passed`",
-      "suggestedFix": "Wire `self-test` to `child_process.spawnSync('node', ['--test', 'test/*.test.ts'])` (or the equivalent for the compiled `test/*.test.js`); or rename to `self-check` if it really is just an internal smoke probe, and have it actually exercise something."
+      "severity": "blocker",
+      "scenario": "Web",
+      "surface": "web",
+      "title": "web/app.js fetches /chat, /journal, /journal?limit=20 from the companion - none of these endpoints exist",
+      "repro": "Open web/index.html while a companion is running on port 8787, type 'Hello', submit",
+      "expected": "The chat shows a reply from EdgeWell.",
+      "actual": "The UI displays 'error: Failed to fetch' for every message; the journal list stays empty.",
+      "suggestedFix": "Either implement /chat and /journal on the companion server, or change the web UI to call the (working) /v1/* equivalents."
     },
     {
       "id": "UAT-FN-11",
       "severity": "medium",
-      "scenario": "S6",
+      "scenario": "S1",
       "surface": "cli",
-      "title": "`version-history` says 'not a git checkout or CHANGELOG not tracked' inside a git checkout with a tracked CHANGELOG.md",
-      "repro": "Run `edgewell version-history` from the repo root (which is a git repo, with CHANGELOG.md tracked)",
-      "expected": "List of recent CHANGELOG.md sections / commits",
-      "actual": "`not a git checkout or CHANGELOG not tracked`",
-      "suggestedFix": "Fix the git/CHANGELOG detection in the `version-history` handler — likely a path resolution issue (relative to CWD vs. `import.meta.url`). Add a regression test that runs from the repo root."
+      "title": "docs/TROUBLESHOOTING.md recommends `npm install --legacy-peer-deps` to fix the `npm install` failure. The actual error is the `link:` URL type, not a peer-dep issue.",
+      "repro": "npm install on the project",
+      "expected": "Either `npm install --legacy-peer-deps` succeeds, or the docs say 'use pnpm'.",
+      "actual": "npm error code EUNSUPPORTEDPROTOCOL. `--legacy-peer-deps` does not help.",
+      "suggestedFix": "Update TROUBLESHOOTING.md: 'EdgeWell's @qvac/sdk is a link: dependency; only pnpm is supported. Use pnpm.'"
     },
     {
       "id": "UAT-FN-12",
       "severity": "medium",
-      "scenario": "S9",
+      "scenario": "S4",
       "surface": "cli",
-      "title": "`seed N` consistently undercounts journal entries by ~20%",
-      "repro": "`edgewell seed 10` → reports 8 journal entries; `edgewell seed 10000` → reports 9001 journal entries (expense count is correct in both cases)",
-      "expected": "`seeded 10 journal entries and 10 expenses`",
-      "actual": "`seeded 8 journal entries and 10 expenses` (and the same ~20% gap at scale)",
-      "suggestedFix": "Inspect the journal-loop in the seed handler — likely an off-by-one in a `for` bound or a category-fork that skips some iterations. Add a unit test: `assert(seed(10).journals === 10)`."
+      "title": "ask output is noisy: the entire prompt template (with RAG context inline) is printed before the stub completion",
+      "repro": "node bin/edgewell.js ask 'How can I save 20% of my income?'",
+      "expected": "A clean one-paragraph answer (or, for the stub, just the route + a friendly placeholder).",
+      "actual": "The full RAG context, the user prompt, the agent template, then [stub completion for: ...]",
+      "suggestedFix": "In stub mode, suppress the internal prompt and print something like '[stub] route=finance - ask: \"How can I save 20%...\"'."
     },
     {
       "id": "UAT-FN-13",
-      "severity": "medium",
-      "scenario": "S8",
+      "severity": "low",
+      "scenario": "S5",
       "surface": "cli",
-      "title": "Unknown subcommand dumps the entire 110-line help screen",
-      "repro": "`edgewell frobnicate`",
-      "expected": "`unknown command: frobnicate\\n\\nDid you mean: ...\\n\\nRun \\`edgewell help\\` for the full list.`",
-      "actual": "Full 110-line help screen, exit 2",
-      "suggestedFix": "Catch the unknown-command case before the help-path branch and print a one-line error with a `Did you mean:` suggestion (use Levenshtein over the known command list)."
+      "title": "A 10 KB journal body is accepted with no warning; no max-length check",
+      "repro": "journal add \"$(python3 -c 'print(\"Slept 8h. \" * 1000)')\"",
+      "expected": "Either truncated, or a soft warning.",
+      "actual": "logged, no message.",
+      "suggestedFix": "Add a soft cap (e.g. 4 KB) with a hint to split long entries."
     },
     {
       "id": "UAT-FN-14",
-      "severity": "medium",
-      "scenario": "S8",
-      "surface": "cli",
-      "title": "Raw `ENOENT` / `EISDIR` errors leak from Node's `fs` layer for rag ingest and multimodal",
-      "repro": "`rag ingest /tmp/nope.txt` and `rag ingest data` (a directory)",
-      "expected": "`file not found: /tmp/nope.txt` and `data is a directory, not a file` — matching the friendly style already used by `import` and `compare`",
-      "actual": "`error: ENOENT: no such file or directory, open '...'` and `error: EISDIR: illegal operation on a directory, read`",
-      "suggestedFix": "Wrap `fs.readFile` calls in `rag ingest` and `multimodal` in a try/catch that maps `ENOENT` → `file not found:` and `EISDIR` → `not a file:`. The `import` and `compare` handlers already do this; lift that helper into a shared module."
+      "severity": "blocker",
+      "scenario": "Web",
+      "surface": "web",
+      "title": "Companion server does not send Access-Control-Allow-Origin, so even GET /health (the only working route) is blocked by CORS preflight from a different-origin browser client",
+      "repro": "(1) start edgewell companion; (2) open the bundled web/index.html from a python3 -m http.server",
+      "expected": "The page shows 'connected - v3.0.0 - 6 agents'.",
+      "actual": "The page shows 'journal error: Failed to fetch'; console shows 4x 'blocked by CORS policy'.",
+      "suggestedFix": "Add CORS middleware to the companion Router (Access-Control-Allow-Origin: * for the bundled UI, or echo the request Origin)."
     },
     {
       "id": "UAT-FN-15",
-      "severity": "medium",
-      "scenario": "S8",
+      "severity": "high",
+      "scenario": "S6,S10",
       "surface": "cli",
-      "title": "`seed` accepts arbitrarily large N with no cap, no progress, no warning",
-      "repro": "`edgewell seed 1000000`",
-      "expected": "Either cap at a reasonable number (e.g. 100 000) and warn, or print a progress line every 1 000 rows, or both",
-      "actual": "Hung for >60 s with no output and no progress indicator before being killed",
-      "suggestedFix": "Add a soft cap (e.g. `if (n > 100000) { console.warn('... capping at 100000'); n = 100000; }`) and a `process.stdout.write` progress tick every 1 000 rows."
+      "title": "The P2P client (EDGEWELL_P2P_ENABLED=1 ...) never actually contacts the peer - it always returns the local stub",
+      "repro": "(1) start serve --port 18787 on the same host; (2) EDGEWELL_P2P_ENABLED=1 EDGEWELL_P2P_HOST=127.0.0.1 EDGEWELL_P2P_PORT=18787 edgewell ask 'hi'",
+      "expected": "The response is streamed from the peer.",
+      "actual": "[lifestyle] [stub completion for: hi] (the peer is never contacted; the same response appears even when the host:port is unreachable)",
+      "suggestedFix": "Trace the client path: createEdgeWell builds a PeerClient only when p2p.enabled is true; the in-process DelegatingLLM should be the one making the call. Verify that EDGEWELL_P2P_ENABLED=1 actually flips the flag (env-var name and parse path)."
     },
     {
       "id": "UAT-FN-16",
       "severity": "low",
-      "scenario": "S4",
+      "scenario": "S6",
       "surface": "cli",
-      "title": "`chat` only processes one piped input then exits cleanly — no multi-line REPL for scripts",
-      "repro": "`printf \"hi\\nexit\\n\" | edgewell chat`",
-      "expected": "Process both `hi` and `exit`, or read until EOF and process all lines",
-      "actual": "Only `hi` is processed; the second `you>` prompt prints, then EOF exits 0",
-      "suggestedFix": "If `!process.stdin.isTTY`, read all of stdin (e.g. via `readline` accumulating `line` events until `close`) and process each line; honour `exit`/`quit` as a graceful stop."
+      "title": "metrics shows '(no metrics recorded yet)' after exercising the CLI for several minutes",
+      "repro": "run info, doctor, seed 5, rag search 'test', then metrics",
+      "expected": "Some counters incremented.",
+      "actual": "All counters empty.",
+      "suggestedFix": "Either wire inc() calls into the dispatch hot path, or remove the `metrics` command from the v3 advertised surface."
     },
     {
       "id": "UAT-FN-17",
       "severity": "low",
-      "scenario": "S5",
+      "scenario": "S8",
       "surface": "cli",
-      "title": "`expense add 250` (no category) silently defaults to `'other'` with no warning",
-      "repro": "`edgewell expense add 250`",
-      "expected": "Error: `missing category — usage: edgewell expense add <amount> <category>`",
-      "actual": "`logged 250 (other)` — quietly mis-tagging data",
-      "suggestedFix": "Add a positional-arg-count check in the `expense add` handler: if `args.length < 1`, print usage and exit 2."
+      "title": "profile set --name=Alex is treated as a literal key, not a flag - the -- prefix is silently consumed",
+      "repro": "node bin/edgewell.js profile set --name=Alex",
+      "expected": "Either rejected as a flag-looking key, or --name is parsed as a flag.",
+      "actual": "Silently sets the key `--name` with the value `Alex` (a key that begins with `--` is unlikely to round-trip).",
+      "suggestedFix": "If a key starts with `-`, reject it with 'key cannot start with `-`'."
     },
     {
       "id": "UAT-FN-18",
       "severity": "low",
       "scenario": "S6",
       "surface": "cli",
-      "title": "`version` and `version-history` disagree on what counts as a release",
-      "repro": "Run `edgewell version` (prints `v3.0.0`) and `edgewell version-history` (prints `not a git checkout or CHANGELOG not tracked`)",
-      "expected": "Coherent narrative — at minimum, `version-history` should be able to find the v3.0.0 entry in CHANGELOG.md",
-      "actual": "`v3.0.0` exists; the changelog-history walker can't find it (see UAT-FN-11 for the underlying git-detection bug)",
-      "suggestedFix": "Fix the underlying git-detection bug (UAT-FN-11); this finding will resolve as a side effect."
+      "title": "multimodal <file> dumps the entire ingested file to stdout on success, mixing ingest status with file contents",
+      "repro": "node bin/edgewell.js multimodal data/sample_health_notes_v3.txt",
+      "expected": "A short 'indexed N bytes, kind=text' line.",
+      "actual": "A 70-line dump of the file body, intermixed with the status banner.",
+      "suggestedFix": "Move the dump behind --print or --verbose; default to the short status line."
     },
     {
       "id": "UAT-FN-19",
       "severity": "low",
-      "scenario": "S2",
-      "surface": "cli/help",
-      "title": "Help screen lists 60+ top-level commands plus a 138-command wall of name-only 'additional commands'",
-      "repro": "Run `edgewell help` and scroll to the bottom",
-      "expected": "8–12 top-level commands with descriptions; advanced commands in `edgewell command-list` only",
-      "actual": "60+ described top-level commands + 138 additional commands dumped as a name-only wall on the first paint of help",
-      "suggestedFix": "Move the `tag-*`, `journal-entries-*`, `expenses-entries-*` families behind `edgewell command-list` (or group them under a single `tag <sub>` / `journal <sub>` namespace) so the default help screen is scannable."
+      "scenario": "S6",
+      "surface": "cli",
+      "title": "vector search returns rows with score=0.0000 - i.e. cosine exactly zero - without explaining what that means",
+      "repro": "node bin/edgewell.js vector search water",
+      "expected": "Hide zero-score rows, or label them as '(no signal)'.",
+      "actual": "Three of five rows have score=0.0000 with no annotation.",
+      "suggestedFix": "Filter zero-score rows from the output, or rename to 'score=0.0 (no match)'."
     },
     {
       "id": "UAT-FN-20",
       "severity": "low",
       "scenario": "S6",
       "surface": "cli",
-      "title": "`where` shows `profile: data/profile.json` even when the file does not exist",
-      "repro": "Delete `data/profile.json`; run `edgewell where`",
-      "expected": "`profile: (not yet created — run \\`edgewell profile init\\`)`",
-      "actual": "`profile: /…/data/profile.json` (same line as when the file exists)",
-      "suggestedFix": "In the `where` handler, check existence for each listed path and append a `(not yet created)` marker when missing — same as `size` already does (it shows `0 B`)."
+      "title": "import of an already-imported file says 'imported 0 journal entries, 0 expenses' - no indication that records were recognised as duplicates",
+      "repro": "export ... ; import <same file>",
+      "expected": "'imported 0 new (skipped 7 existing)' or similar.",
+      "actual": "'imported 0 journal entries, 0 expenses'",
+      "suggestedFix": "Include a duplicate-skip count in the output."
+    },
+    {
+      "id": "UAT-FN-21",
+      "severity": "low",
+      "scenario": "S6",
+      "surface": "cli",
+      "title": "models describe medpsy-1 returns all fields as 'unknown' - the help does not show the canonical id format",
+      "repro": "node bin/edgewell.js models describe medpsy-1",
+      "expected": "Helpful error: 'no model with id medpsy-1; try `edgewell models list`'",
+      "actual": "{\"id\":\"medpsy-1\",\"family\":\"unknown\",...}",
+      "suggestedFix": "The unknown-id path should be a 'not found' error, not a placeholder record."
+    },
+    {
+      "id": "UAT-FN-22",
+      "severity": "low",
+      "scenario": "S6",
+      "surface": "cli",
+      "title": "profiles apply tinkerer prints '(writes to ~/.edgewell/profile.json in a future release)' - the user just ran a command and the command itself admits it doesn't persist",
+      "repro": "node bin/edgewell.js profiles apply tinkerer",
+      "expected": "The applied profile sticks across runs.",
+      "actual": "Apparent confirmation, with a note that the change is not actually saved.",
+      "suggestedFix": "Either persist the selection (e.g. write to data/profile.json or ~/.edgewell/state.json) or remove the misleading success message."
+    },
+    {
+      "id": "UAT-FN-23",
+      "severity": "low",
+      "scenario": "S3",
+      "surface": "cli",
+      "title": "doctor reports a single FAIL but counts it as '1 check(s) failed' in the summary - the wording is plural for a count of one",
+      "repro": "node bin/edgewell.js doctor (fresh install)",
+      "expected": "'1 check failed'",
+      "actual": "'1 check(s) failed'",
+      "suggestedFix": "Use proper singular/plural ('1 check failed' / 'N checks failed')."
+    },
+    {
+      "id": "UAT-FN-24",
+      "severity": "low",
+      "scenario": "S5",
+      "surface": "cli",
+      "title": "No upper cap on expense add - a 1,000,000,000 expense is accepted silently",
+      "repro": "node bin/edgewell.js expense add 1000000000 car",
+      "expected": "Either an upper cap (with a clear error), or a soft warning.",
+      "actual": "logged 1000000000 (car) and the weekly summary then shows total 1000000418.00",
+      "suggestedFix": "Add a configurable max amount (the schema validator already rejects > EXPENSE_MAX per the unit tests, but the CLI does not surface that check)."
     }
   ]
 }

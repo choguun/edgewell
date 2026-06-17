@@ -133,6 +133,6 @@ export async function doctorCommand(_args, ew) {
     if (!c1.ok) bad++;
   }
   console.log();
-  console.log(bad === 0 ? c.green("all checks passed") : c.red(`${bad} check(s) failed`));
+  console.log(bad === 0 ? c.green("all checks passed") : c.red(`${bad} ${bad === 1 ? "check" : "checks"} failed`));
   process.exit(bad === 0 ? 0 : 1);
 }

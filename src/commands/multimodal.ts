@@ -10,12 +10,13 @@ import { header, c } from "../cli.js";
 export async function multimodalCommand(args, ew) {
   const [file, ...rest] = args;
   if (!file) {
-    console.error("usage: edgewell multimodal <file> [--journal] [--rag]");
+    console.error("usage: edgewell multimodal <file> [--journal] [--rag] [--print]");
     process.exit(2);
   }
   const flags = new Set(rest);
   const toJournal = flags.has("--journal");
   const toRag = flags.has("--rag");
+  const print = flags.has("--print");
   if (!toJournal && !toRag) {
     // Default behaviour in v3.0.0: send to RAG so the LLM can
     // surface the file in future chats.
@@ -37,5 +38,10 @@ export async function multimodalCommand(args, ew) {
     });
     console.log(c.green("appended to journal"));
   }
-  console.log("\n" + result.text);
+  // Default behaviour: do NOT dump the full file body. Mixing
+  // ingest status with the file contents (UAT-FN-18) made the
+  // output unusable for large files. Opt in with --print.
+  if (print) {
+    console.log("\n" + result.text);
+  }
 }

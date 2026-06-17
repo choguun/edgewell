@@ -7,7 +7,31 @@ const SERVER = (() => {
   const params = new URLSearchParams(location.search);
   return params.get("server") ?? `http://${location.hostname}:8787`;
 })();
-const TOKEN = localStorage.getItem("edgewell.token") ?? "";
+function getToken() {
+  return localStorage.getItem("edgewell.token") ?? "";
+}
+function setToken(t) {
+  if (t) localStorage.setItem("edgewell.token", t);
+  else localStorage.removeItem("edgewell.token");
+}
+
+// Detect 401 from the server and prompt the user to paste a
+// bearer token. The token can be generated with:
+//   edgewell companion --print-token
+// or
+//   edgewell token my-phone
+// (using the same secret the companion was started with).
+function promptForToken(reason) {
+  const hint = reason === "missing"
+    ? "Server requires a bearer token. Mint one with:\n  edgewell companion --print-token\n  edgewell token my-phone\n\nPaste it here:"
+    : "Server rejected the token (" + reason + "). Paste a new one:";
+  const t = prompt(hint, "");
+  if (t && t.trim()) {
+    setToken(t.trim());
+    return true;
+  }
+  return false;
+}
 
 const els = {
   status: document.getElementById("status"),
@@ -22,12 +46,30 @@ const els = {
 
 function headers() {
   const h = { "content-type": "application/json" };
-  if (TOKEN) h.authorization = `Bearer ${TOKEN}`;
+  const tok = getToken();
+  if (tok) h.authorization = `Bearer ${tok}`;
   return h;
 }
 
 async function api(path, init = {}) {
   const res = await fetch(`${SERVER}${path}`, { ...init, headers: { ...headers(), ...(init.headers ?? {}) } });
+  if (res.status === 401) {
+    // Token missing or rejected. Ask the user once and retry.
+    const body = await res.text().catch(() => "");
+    let reason = "missing";
+    try {
+      const j = JSON.parse(body);
+      if (typeof j?.error === "string") reason = j.error;
+    } catch {}
+    if (promptForToken(reason)) {
+      // Retry the request once with the new token.
+      return api(path, init);
+    }
+    const err = new Error(`HTTP 401: ${body}`);
+    err.status = 401;
+    err.body = body;
+    throw err;
+  }
   const text = await res.text();
   let body = null;
   try { body = text ? JSON.parse(text) : null; } catch { body = text; }
@@ -99,8 +141,19 @@ async function loadJournal() {
 
 async function ping() {
   try {
-    const r = await api("/health");
-    els.status.textContent = `connected · v${r.version} · ${r.agents.length} agents`;
+    const r = await fetch(`${SERVER}/health`);
+    if (r.ok) {
+      const j = await r.json();
+      els.status.textContent = `connected · v${j.version} · ${j.agents.length} agents`;
+    } else if (r.status === 401) {
+      els.status.textContent = "needs bearer token — click to set";
+      els.status.style.cursor = "pointer";
+      els.status.onclick = async () => {
+        if (promptForToken("missing")) { await ping(); await loadJournal(); }
+      };
+    } else {
+      els.status.textContent = `disconnected (HTTP ${r.status})`;
+    }
   } catch (err) {
     els.status.textContent = `disconnected (${err.message})`;
   }

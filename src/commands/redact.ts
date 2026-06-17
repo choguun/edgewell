@@ -8,7 +8,25 @@ export async function redactCommand(args) {
   // which made the command useless for `redact "some text"` or
   // `redact --text "..."` — the two most natural first tries.
   if (args.length === 0) {
+    // No positional args: read from stdin. This makes
+    // `echo 'my email is j@x.com' | edgewell redact` work, which
+    // is the most natural pipeline for a redaction command.
+    if (!process.stdin.isTTY) {
+      const chunks: string[] = [];
+      for await (const c1 of process.stdin) chunks.push(String(c1));
+      const text = chunks.join("").trim();
+      if (!text) {
+        console.error("usage: edgewell redact <text> [...more words]");
+        console.error("       echo 'text' | edgewell redact   (reads from stdin)");
+        console.error("       edgewell redact text <text>");
+        console.error("       edgewell redact json <json-string>");
+        process.exit(2);
+      }
+      process.stdout.write(redact(text) + "\n");
+      return;
+    }
     console.error("usage: edgewell redact <text> [...more words]");
+    console.error("       echo 'text' | edgewell redact   (reads from stdin)");
     console.error("       edgewell redact text <text>");
     console.error("       edgewell redact json <json-string>");
     console.error("       edgewell redact --text <text>");
