@@ -16,3 +16,10 @@ dist/
 build/
 coverage/
 *.tsbuildinfo
+
+# UAT / review artifacts. Regenerated on demand by `/uat` and
+# `/review`; never committed.
+UAT-REPORT*.md
+uat-*.json
+uat-*/
+REVIEW.md
