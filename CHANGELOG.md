@@ -3,6 +3,57 @@
 All notable changes to EdgeWell are documented here. The format is
 loosely based on [Keep a Changelog](https://keepachangelog.com).
 
+## [v3.0.1] — 2026-06-18 (hackathon cut)
+
+Hackathon submission drop for the QVAC General Purpose track. v3.0.1
+is a quality-and-completeness pass over the v3.0.0 surface plus the
+artifacts needed to demo, evaluate, and submit the project.
+
+- **`edgewell showcase` command** (`src/commands/showcase.ts`):
+  hand-rolled one-shot demo that wires the real `Orchestrator`,
+  `HealthAgent`, `FinanceAgent`, and `ToolAgent` against an inline
+  stub LLM. Prints three questions (health → `search_kb`,
+  finance → `calculator`, lifestyle → canned reply) plus the
+  P2P-peer-unreachable → local-model fallback line. Runs without a
+  live QVAC SDK and produces a deterministic transcript.
+- **Multi-agent + tool-calling demo log** (`demo/showcase-compiled.txt`):
+  the captured stdout of `node dist/bin/edgewell.js showcase`,
+  used as the primary evidence artifact for reviewers who do not
+  want to install the SDK to see the trace.
+- **Peer-mesh artifact**: `docs/diagrams/peer-mesh.mmd` renders the
+  multi-peer fan-out, health-check loop, and majority-vote
+  consensus path; the diagram source is now referenced from
+  `HACKATHON-SUBMISSION.md` and from the README.
+- **Architecture diagrams** (`docs/diagrams/architecture.mmd`):
+  top-level Mermaid flowchart covering the user surface (CLI, web
+  UI, companion HTTP), the orchestrator + router, the
+  `DelegatingLLM` peer-first / local-fallback path, the lifestyle
+  specialist bundle, RAG / hybrid search, the tool registry +
+  tool agent, and the multimodal pipelines.
+- **Social content**: `HACKATHON-SUBMISSION.md` (project
+  description, evidence list, run instructions, limitations,
+  roadmap) and `demo/demo-script.md` (judge-friendly 5-minute
+  walkthrough covering `showcase`, `rag search`, `expense add`,
+  `serve`, and `companion`).
+- **Submission doc**: `HACKATHON-SUBMISSION.md` at the repo root
+  with metadata (track, SDK, repo path, last-verified date) and
+  pointers to the demo log, architecture diagram, and peer-mesh
+  diagram. Linked from the new `## Hackathon submission` section
+  of the README.
+- **Showcase double-tool-call fix**: the per-agent turn counter
+  in `src/commands/showcase.ts` previously leaked between the
+  orchestrator's specialist call and the tool-agent's follow-up
+  call, causing the second turn to be counted as the
+  tool-calling turn and producing two `<tool name="...">` blocks
+  in the final reply. Each `runOne` call now constructs a fresh
+  stub LLM for the orchestrator and another for the tool agent,
+  so the counter is per-phase and each agent emits exactly one
+  tool call on its first turn and the final reply on its second.
+- **TypeScript source restoration**: a small number of files had
+  reverted to `.js` after the v3.0.0 alpha; they are restored
+  to `.ts` (`src/commands/command-list.ts`, `src/agents/*.ts`)
+  and the test suite re-runs green against the TS source.
+
 ## [Unreleased]
 
 ### Planned for 3.0.0 — "Senses & Memory"

@@ -1,0 +1,48 @@
+%% EdgeWell v3.0.1 — router + tool-calling sequence
+%% Sources: src/agents/orchestrator.ts (route, parseRoute, ask),
+%%          src/agents/health.ts (ask, _ctx), src/rag.ts (contextBlock),
+%%          src/tool-agent.ts (ask loop), src/tools.ts (search_kb)
+
+sequenceDiagram
+    autonumber
+    actor U as User
+    participant CLI as CLI (bin/edgewell.js)
+    participant ORC as Orchestrator
+    participant RL as Router LLM call
+    participant HA as HealthAgent
+    participant RAG as RagIndex
+    participant TA as ToolAgent (optional)
+    participant TR as ToolRegistry
+    participant LLM as LLM (local or peer)
+
+    U->>CLI: edgewell ask "why am I tired this week"
+    CLI->>ORC: orchestrator.ask(question, history)
+    ORC->>RL: llm.prompt({system: ROUTER_SYSTEM, user, maxTokens:120, temperature:0})
+    RL-->>ORC: text (ideally {"agent":"health","reason":"..."})
+
+    Note over ORC: parseRoute(text, question)<br/>strip code fences -> first {...}<br/>JSON.parse -> validate against {health,finance,lifestyle}
+
+    alt valid JSON with known agent
+        ORC->>HA: dispatch(agent="health", question, history)
+    else parse fails or agent unknown
+        Note over ORC: Keyword fallback on the ORIGINAL question<br/>(symptom|sleep|exercise|diet|medication|pain|stress|mood) -> health<br/>(money|budget|expense|saving|debt|income|price|thb|usd|baht) -> finance<br/>else -> lifestyle
+    end
+
+    HA->>RAG: contextBlock(query, k=4)
+    RAG-->>HA: top-k deduped hits
+
+    HA->>LLM: llm.prompt({system: HEALTH_SYSTEM,<br/>user: "User notes ... \n\n Question: ...", history})
+
+    opt Tool-calling loop (ToolAgent, maxRounds=3)
+        LLM-->>TA: reply containing <tool name="search_kb">{...}</tool>
+        TA->>TR: tools.call("search_kb", params, ctx)
+        TR-->>TA: {hits: [...]}
+        TA->>LLM: follow-up "Tool results: ..."
+        LLM-->>TA: final synthesis reply
+        Note over TA: Stuck-loop guard: identical<br/>call+result signature stops early
+    end
+
+    LLM-->>HA: answer text
+    HA-->>ORC: reply
+    ORC-->>CLI: {agent: "health", reply}
+    CLI-->>U: streamed tokens (or final answer)

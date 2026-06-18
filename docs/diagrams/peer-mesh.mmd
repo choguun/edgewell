@@ -1,0 +1,33 @@
+%% EdgeWell v3.0.1 — peer mesh routing and fallback
+%% Sources: src/peer-mesh.ts (PeerMesh.healthy, stream, broadcast,
+%%          consensus), src/p2p.ts (DelegatingLLM._withFallback),
+%%          src/p2p.ts (PeerClient.ping, stream, prompt)
+
+flowchart LR
+  CALL["DelegatingLLM.prompt / stream<br/>src/p2p.ts"]
+  MESH["PeerMesh<br/>src/peer-mesh.ts"]
+  HEALTHY["healthy()<br/>Promise.all peers.map ping<br/>filter ok, sort by latencyMs"]
+  SORTED["Sorted live peers<br/>fastest first"]
+  STREAM["stream(body)<br/>walk peers in latency order<br/>first token wins<br/>partial answer is accepted"]
+  BROADCAST["broadcast(body)<br/>fan-out to every live peer<br/>collect per-peer text or error"]
+  VOTE["consensus(body)<br/>majority vote on normalized<br/>short answers / first non-empty long"]
+  P1["PeerClient A<br/>(desktop)"]
+  P2["PeerClient B<br/>(peer node)"]
+  PN["PeerClient N<br/>peer.baseUrl"]
+  ALLFAIL["all peers failed<br/>(throw from stream or broadcast)"]
+  WARN["logger.warn + stderr line<br/>'[p2p] peer host:port unreachable<br/>— falling back to local model'"]
+  LOCAL["EdgeWellLLM<br/>src/qvac.ts<br/>local fallback (same model as delegate)"]
+
+  CALL --> MESH
+  MESH --> HEALTHY --> SORTED
+  SORTED --> STREAM
+  SORTED --> BROADCAST --> VOTE
+  STREAM --> P1
+  STREAM --> P2
+  STREAM --> PN
+  BROADCAST --> P1
+  BROADCAST --> P2
+  BROADCAST --> PN
+  STREAM -. any peer error .-> ALLFAIL
+  BROADCAST -. per-peer error captured .-> ALLFAIL
+  ALLFAIL --> WARN --> LOCAL

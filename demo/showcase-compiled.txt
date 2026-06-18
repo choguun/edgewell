@@ -1,0 +1,33 @@
+────────────────────────────────────────────────────────────
+ EdgeWell v3.0.1 — multi-agent + tool-calling + P2P showcase 
+────────────────────────────────────────────────────────────
+HACKATHON SHOWCASE STUB — replace with real QVAC inference when SDK is wired
+Three questions, three specialists, two tool calls, one fallback.
+
+── Q1 / health ─────────────────────────────────────────
+question: why am I so tired this week
+router:  agent=health
+raw:     Sounds like a fatigue pattern — try a consistent wake time and a 20-minute morning walk. I'll cross-check your last 7 days of journal entrie…
+tool-call: name=search_kb params={"query":"sleep tired fatigue last week","topK":3}
+tool-result: {"hits":[{"text":"journal: slept poorly on 2026-06-12, woke at 03:40 (query=sleep tired fatigue last week)","source":"journal.jsonl","score":0.91},{"text":"journal: energy crash after lunch, mood=low (query=sleep tired fatigue last week)","source":"journal.jsonl","score":0.74},{"text":"notes: caffeine cutoff moved from 14:00 to 11:00 (query=sleep tired fatigue last week)","source":"notes.md","score":0.61}]}
+agent:    Three factors usually drive mid-week fatigue: (1) inconsistent wake time, (2) post-lunch carb crash, (3) accumulated sleep debt from Sunday/Monday. Top fix: same wake time 7 days/week + 20 min morning sunlight. I searched your last 7 days of journal entries and saw the pattern.
+
+── Q2 / finance ─────────────────────────────────────────
+question: how much did I spend on coffee this month
+router:  agent=finance
+raw:     Quick math for you: 30 workdays × 4.5 USD/day = 135 USD/month on coffee.  <tool name="calculator">{"expression": "30 * 4.5"}</tool>  If you …
+tool-call: name=calculator params={"expression":"30 * 4.5"}
+tool-result: {"result":135}
+agent:    Quick math: 30 workdays × 4.5 USD/day = 135 USD/month on coffee.
+
+── Q3 / lifestyle ─────────────────────────────────────────
+question: help me build a morning routine
+router:  agent=lifestyle
+raw:     Try this morning routine: 06:30 wake → 5 min stretch → 10 min journal → 20 min walk. Keep it under 40 minutes so it sticks.…
+agent:    Try this morning routine: 06:30 wake → 5 min stretch → 10 min journal → 20 min walk. Keep it under 40 minutes so it sticks.
+
+[p2p] peer 127.0.0.1:8787 unreachable — falling back to local model
+       local-model: LLAMA_3_2_1B_INST_Q4_0 (mobile/tinkerer profile)
+       delegate-on: delegation disabled by profile; using local 1B
+
+summary: agents=health,finance,lifestyle tools=search_kb,calculator rag-hits=3 p2p-fallback=fired

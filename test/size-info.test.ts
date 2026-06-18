@@ -75,7 +75,7 @@ test("info command prints version from package.json", async () => {
     console.log = orig;
   }
   const text = logs.join("\n");
-  assert.match(text, /3\.0\.0/);
+  assert.match(text, /3\.0\.1/);
   assert.match(text, /node:/);
   assert.match(text, /journal:/);
 });

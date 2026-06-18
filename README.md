@@ -25,6 +25,13 @@ ID at runtime.
 - **CLI** with `chat`, `ask`, `journal`, `expense`, `rag`, `plan`,
   `serve`, `status`, and `version` subcommands.
 
+### Showcase
+
+Run `edgewell showcase` to print the multi-agent + tool-calling +
+P2P-fallback trace without installing the live QVAC SDK. The
+captured transcript lives at `demo/showcase-compiled.txt` and is
+the primary evidence artifact for the hackathon submission.
+
 ## What's new in v2.0.0
 
 - Model registry with curated QVAC model metadata.
@@ -66,6 +73,37 @@ capabilities and keeps every v2.0.0 surface area intact.
 - **Documentation**: `docs/ROADMAP.md`, `docs/ARCHITECTURE.md`,
   `docs/DEPLOYMENT.md`, `docs/MIGRATION-2-to-3.md`, `docs/PLUGINS.md`.
 
+## Hackathon submission
+
+v3.0.1 is the QVAC hackathon cut. Everything reviewers need to
+evaluate the project is committed in this repo; no live SDK is
+required to see the trace.
+
+- **Project write-up**: [`HACKATHON-SUBMISSION.md`](./HACKATHON-SUBMISSION.md)
+  is the canonical submission document — track, SDK, run
+  instructions, evidence list, limitations, and roadmap.
+- **Submission index**: [`SUBMISSION-INDEX.md`](./SUBMISSION-INDEX.md)
+  lists every artifact a judge might want to look at, with a
+  one-line description of each.
+- **Demo script**: [`demo/demo-script.md`](./demo/demo-script.md)
+  is the 5-minute judge-friendly walkthrough (`showcase` →
+  `rag search` → `expense add` → `serve` → `companion`).
+- **Architecture diagram**:
+  [`docs/diagrams/architecture.mmd`](./docs/diagrams/architecture.mmd)
+  is the top-level Mermaid flowchart (user surface →
+  orchestrator → specialists → RAG → tools → multimodal).
+- **Peer-mesh diagram**:
+  [`docs/diagrams/peer-mesh.mmd`](./docs/diagrams/peer-mesh.mmd)
+  shows the multi-peer fan-out, health checks, and
+  majority-vote consensus used by `DelegatingLLM`.
+- **Captured transcript**: the showcase command's stdout is
+  checked in at `demo/showcase-compiled.txt` so reviewers can
+  read the trace without running anything.
+- **Run it yourself**: `pnpm install && pnpm build && node
+  dist/bin/edgewell.js showcase` reproduces the transcript
+  byte-for-byte (the showcase stub is deterministic — no
+  `Date.now()`, no random IDs).
+
 ## What's new in v3.0.1 (hardening)
 
 v3.0.1 is a quality-and-completeness pass over the v3.0.0 surface.
@@ -73,6 +111,9 @@ The CLI was ported from JavaScript to TypeScript (`tsconfig.build.json`
 + `pnpm build`), every blocker-class finding from the third UAT
 pass was fixed, and the companion subsystem is now fully wired up.
 
+- **`edgewell showcase` command**: prints the multi-agent +
+  tool-calling + P2P-fallback trace without a live QVAC SDK. See
+  `demo/showcase-compiled.txt`.
 - **Companion server is end-to-end usable.** It now (a) sends CORS
   headers so a phone browser can call it from a different origin,
   (b) short-circuits `OPTIONS` preflight with `204`, (c) serves the

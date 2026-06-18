@@ -1,0 +1,65 @@
+# EdgeWell v3.0.1 hackathon artifact — produced 2026-06-18
+# File: artifacts/edgewell-help.txt
+# Source: node dist/bin/edgewell.js help
+# Captured by: evidence-refresher (qa-tester, MiniMax-M3)
+
+EdgeWell - private on-device health & finance coach (powered by QVAC)
+
+Usage:
+  edgewell <command> [options]
+
+Commands:
+  chat                       Interactive REPL chat (routes to specialists)
+  ask <question>             One-shot question, streamed
+  serve                      Start a P2P server hosting the delegate model
+  journal add <text>         Append a journal entry
+  journal list               List recent journal entries
+  expense add <amt> <cat>    Append an expense
+  expense list               List recent expenses
+  rag ingest <file>          Index a text file into the local RAG store
+  rag search "<query>"       Search the RAG index
+  plan health "<goal>"       Generate a 7-day health plan
+  plan finance [--income N]  Generate a monthly finance plan
+  profile show|set|init      View or update the user profile
+  profile-reset              Clear the on-disk user profile
+  profiles list|show|apply   Manage form-factor profiles
+  companion --port N         Start the v3.0.0 mobile companion server
+  multimodal <file>          Ingest image/audio/text into RAG
+  sensors ingest|summarise   Process wearable JSONL streams
+  vector search|stats|clear  Inspect the vector RAG index
+  hybrid "<query>"           Lexical + vector fused search
+  export <file>              Write a portable JSON dump
+  import <file>              Merge a JSON dump into the stores
+  compare <a> <b>            Diff two export files
+  agents                     List the v3.0.0 agent bundle
+  metrics                    Print in-process counters and histograms
+  info                       One-screen overview of EdgeWell
+  size                       On-disk size of the data files
+  where                      Resolved on-disk file paths
+  deps                       Runtime and dev dependencies
+  seed <N>                   Append N synthetic journal+expense rows
+  demo-data                  Load the bundled sample data
+  today                      Today's journal and expenses
+  yesterday                  Yesterday's journal and expenses
+  tail [N]                   Last N journal entries (default 10)
+  grep <pattern>             Substring search of the journal
+  word-count                 Journal word and character counts
+  journal-stats              Journal length, range, top tags
+  expenses-stats             Expense totals, range, per-category
+  tag-stats                  Per-tag first/last/count
+  tag-cloud                  ASCII tag cloud
+  tags-add <id> <tag>        Append a tag to a journal entry
+  lint                       Data integrity check
+  token [subject]            Mint a companion bearer token
+  self-test                  Run the project test suite
+  ci                         Local GitHub Actions checks
+  version-history [N]        Last N CHANGELOG.md commits
+  summary week|month         Roll up journal + expenses
+  tags                       Show top journal tags
+  eval <expr>                Calculator tool one-shot
+  bench                      LLM throughput benchmark
+  snapshot                   Dump profile + journal + expenses as JSON
+  models list|describe       Browse the QVAC model registry
+  plugins list|run           Manage local plugins (EDGEWELL_PLUGINS)
+  status                     Show config, peer status, RAG size
+  doctor                     Run self-checks

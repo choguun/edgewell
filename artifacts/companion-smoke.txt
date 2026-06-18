@@ -1,0 +1,47 @@
+# EdgeWell v3.0.1 hackathon artifact — produced 2026-06-18
+# File: artifacts/companion-smoke.txt
+
+# Verifies the companion server boots, prints a real bearer token,
+# serves a working /health endpoint, and serves the web UI root.
+# This is a "smoke" artifact — start server briefly, curl it, kill.
+
+==== step 1: print token + boot banner ====
+$ timeout 5 node --import tsx bin/edgewell.ts companion --print-token
+bearer token: Y29uc29sZS4xNzgxNzgzODA2MjM1.sEovnxieJ1tqT9YgJWGkdVr9qh17al83PYjSQeWD6ww
+──────────────────────────────────────
+ EdgeWell companion on 127.0.0.1:8787 
+──────────────────────────────────────
+auth: enabled
+serving web UI from /Users/choguun/Documents/workspaces/cool-projects/edgewell/web
+http://127.0.0.1:8787/ (service: edgewell)
+
+(observed: --print-token exits cleanly after printing the token +
+banner; without --print-token the server stays in the foreground.)
+
+==== step 2: start server in background, curl /health ====
+$ node --import tsx bin/edgewell.ts companion --print-token > /tmp/srv.log 2>&1 &
+$ sleep 2
+$ curl -sf http://127.0.0.1:8787/health
+
+==== step 3: actual observed /health response (captured 2026-06-18) ====
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+access-control-allow-origin: *
+access-control-allow-methods: GET, POST, OPTIONS
+access-control-allow-headers: authorization, content-type
+access-control-max-age: 600
+Date: Thu, 18 Jun 2026 10:56:54 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+Content-Length: 130
+
+{"ok":true,"name":"edgewell-companion","version":"3.0.1","agents":["health","finance","sleep","nutrition","hydration","activity"]}
+==== step 4: /health with NO auth (intentionally public per design) ====
+$ curl -s -o /tmp/noauth.body -w "HTTP %{http_code}\n" http://127.0.0.1:8787/health
+HTTP 200
+{"ok":true,"name":"edgewell-companion","version":"3.0.1","agents":["health","finance","sleep","nutrition","hydration","activity"]}
+NOTE: /health is auth-free on purpose (liveness probe). All other
+endpoints (/chat, /journal, /expenses, /profile) require the bearer
+token. Verified by test/companion.test.ts:
+  ✔ authed routes return 401 when secret is set and no bearer token
+     is provided

@@ -1,0 +1,108 @@
+================================================================================
+EdgeWell v3.0.1 - one-page architecture
+================================================================================
+
+                                       (User)
+                                          |
+        +-------------+-------------------+-------------------+-------------+
+        |             |                   |                   |             |
+        v             v                   v                   v             v
+  +-----------+ +---------------+  +----------------+   +-------------------+
+  | CLI       | | Companion     |  | Web UI         |   | EdgeWell library  |
+  | bin/edge  | | HTTP server   |  | web/           |   | createEdgeWell()  |
+  | well.js   | | port 8787     |  | static SPA     |   | src/index.ts      |
+  | ask/chat  | | HMAC bearer   |  | no build step  |   | loads cfg, llm,   |
+  | multimod. | +-------+-------+  +--------+-------+   | profile, journal, |
+  +-----+-----+         |                   |           | expenses, rag     |
+        |               |                   |           +---------+---------+
+        |               v                   |                     |
+        |      POST /chat -> handle()       |                     |
+        |               |                   |                     |
+        +---------------+-------------------+---------------------+
+                                        |
+                                        v
+        +---------------------------------------------------------------+
+        |                    Orchestrator                                |
+        |  src/agents/orchestrator.ts                                    |
+        |  - route(): llm.prompt(ROUTER_SYSTEM, maxTokens=120, temp=0)   |
+        |  - parseRoute(): strip code fences, parse first {...}          |
+        |  - keyword fallback:                                           |
+        |      health regex | finance regex | lifestyle default          |
+        +---+----+----+----+----+----+----+------------------------------+
+            |    |    |    |    |    |    |
+            v    v    v    v    v    v    v
+          Hlth Fin  Sleep Nut  Hyd Act Ls
+          (src/agents/health.ts, finance.ts, sleep.ts, nutrition.ts,
+           hydration.ts, activity.ts; lifestyle uses LIFESTYLE_SYSTEM)
+            |    |    |    |    |    |    |
+            +----+----+----+----+----+    |
+                     |                   |
+              +------+------+            v
+              v             v     +----------------+
+        +----------+  +---------+  | DelegatingLLM |
+        | RAG      |  | Tool    |  | src/p2p.ts    |
+        | hybrid   |  | Agent   |  | peer-first,   |
+        | TF-IDF + |  | loop    |  | local fallback|
+        | Vector + |  | max=3   |  +-------+--------+
+        | RRF +    |  | stuck-  |          |
+        | Rerank   |  | loop grd|          v
+        +----+-----+  +----+----+   +-------------+
+             |             |        | PeerMesh    |
+             v             v        | healthy()   |
+        +---------+  +-----------+  | parallel    |
+        | chunks. |  | ToolReg.  |  | ping, sort  |
+        | json    |  | calc, dt, |  | by latency  |
+        | JSONL   |  | search_kb,|  +------+------+
+        +---------+  | add_exp,  |         |
+                    | add_jrnl  |         v
+                    +-----+-----+  +----------------+
+                          |        | PeerClient A   |
+                          v        | PeerClient B   |
+                    +-----------+  | PeerClient N   |
+                    | JSONL     |  +--------+-------+
+                    | stores    |           |
+                    | journal / |           v
+                    | expenses / |  +-------------------+
+                    | profile   |  | Peer server       |
+                    +-----------+  | POST /completion  |
+                                    | NDJSON, @qvac/sdk |
+                                    +---------+---------+
+                                              |
+                                              v
+                                    +----------------------+
+                                    | Model registry       |
+                                    | LLAMA 1B / 8B        |
+                                    | MEDPSY 4B            |
+                                    | captioner/xcriber    |
+                                    +----------+-----------+
+                                               |
+              all peers fail                    |
+                    |                          v
+                    v                 +-------------------+
+              +-----------+           | EdgeWellLLM       |
+              | logger.   |           | src/qvac.ts       |
+              | warn +    |           | local fallback    |
+              | stderr    |           +---------+---------+
+              | [p2p] ... |                     |
+              +-----+-----+                     v
+                    |                  +----------------+
+                    +---------------->| JSONL stores   |
+                                       +----------------+
+
+  Sidebars (apply across the whole flow):
+
+  Profiles (src/profiles.ts):         Security & Storage:
+   mobile    -> LLAMA 1B / 8B peer   crypto.ts           scrypt + AES-256-GCM
+   tinkerer  -> LLAMA 1B / 8B peer   encrypted-store.ts  at-rest envelope
+   desktop   -> LLAMA 8B / MEDPSY    redact.ts           PII scrubber
+   applied at boot via loadConfig    snapshot-sign.ts    SHA-256 signature
+   (state.json merges into cfg)      JSONL stores        append-only
+
+================================================================================
+Sources: src/index.ts, src/agents/orchestrator.ts, src/peer-mesh.ts,
+         src/p2p.ts, src/profiles.ts, src/rag.ts, src/hybrid-search.ts,
+         src/retrieval-fusion.ts, src/reranker.ts, src/tools.ts,
+         src/tool-agent.ts, src/companion/server.ts, src/multimodal/index.ts,
+         src/qvac.ts, src/registry.ts, src/crypto.ts, src/redact.ts,
+         src/encrypted-store.ts, src/commands/snapshot-sign.ts
+================================================================================

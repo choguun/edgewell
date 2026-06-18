@@ -1,0 +1,33 @@
+%% EdgeWell v3.0.1 — multimodal ingest pipeline
+%% Sources: src/multimodal/index.ts (ingestPath dispatcher),
+%%          src/multimodal/image.ts (ingestImage, placeholderCaption),
+%%          src/multimodal/audio.ts (ingestAudio, chunkMs),
+%%          src/multimodal/sensors.ts (summariseEvents, toJournalLine),
+%%          src/rag.ts (RagIndex.ingest, chunkText, TF-IDF),
+%%          src/vector-index.ts (embedder)
+
+flowchart LR
+  IMG["Image file<br/>jpg / png"]
+  AUD["Audio file<br/>wav / m4a"]
+  SENS["Wearable sensor stream<br/>jsonl events"]
+
+  CAP["captioner<br/>injected via captionFn<br/>src/multimodal/image.ts<br/>(placeholder caption if absent)"]
+  TRANS["transcriber<br/>injected via transcribeFn<br/>src/multimodal/audio.ts<br/>chunkMs = 30_000"]
+  AGG["summariseEvents()<br/>src/multimodal/sensors.ts"]
+  WIN["window aggregator<br/>toJournalLine()"]
+  PLAIN["plain text fallback<br/>.md / .txt -> utf8 read"]
+
+  DISP["ingestPath dispatcher<br/>src/multimodal/index.ts<br/>isImagePath / isAudioPath / else"]
+
+  RAG["RagIndex.ingest<br/>src/rag.ts<br/>chunkText size=400 overlap=50"]
+  VEC["VectorIndex<br/>src/vector-index.ts<br/>embedder: hash default or QVAC"]
+  CHUNKS["chunks.json<br/>JSONL store"]
+
+  IMG --> CAP --> DISP
+  AUD --> TRANS --> DISP
+  SENS --> AGG --> WIN --> DISP
+  DISP -. unknown extension .-> PLAIN --> DISP
+  DISP --> RAG
+  DISP --> VEC
+  RAG --> CHUNKS
+  VEC --> CHUNKS

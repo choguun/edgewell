@@ -1,0 +1,16 @@
+# EdgeWell v3.0.1 hackathon artifact — produced 2026-06-18
+# File: artifacts/edgewell-info.txt
+# Source: node dist/bin/edgewell.js info
+# Captured by: evidence-refresher (qa-tester, MiniMax-M3)
+
+───────────────
+ EdgeWell info 
+───────────────
+name:     edgewell
+version:  3.0.1
+node:     v24.13.0
+platform: darwin arm64
+data dir: data
+journal:  4 entries
+expenses: 4 entries
+rag:      56 chunks

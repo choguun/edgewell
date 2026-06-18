@@ -291,7 +291,7 @@ test("releaseNotesCommand shows the latest non-Unreleased section by default", a
   // Should NOT show "Unreleased" (which is empty in CHANGELOG.md)
   assert.doesNotMatch(out, /Release notes: Unreleased/);
   // Should show the most recent real release
-  assert.match(out, /Release notes: \d+\.\d+\.\d+/);
+  assert.match(out, /Release notes: v?\d+\.\d+\.\d+/);
 });
 
 test("releaseNotesCommand with an explicit version shows that section", async () => {

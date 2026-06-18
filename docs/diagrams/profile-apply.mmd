@@ -1,0 +1,35 @@
+%% EdgeWell v3.0.1 — profile apply + boot lifecycle
+%% Sources: src/profiles.ts (PROFILES, pickProfile),
+%%          src/commands/profiles.ts (apply/list/show),
+%%          src/config.ts (loadConfig, state.json read)
+
+stateDiagram-v2
+  [*] --> Default
+  Default: default (no profile applied)
+
+  Default --> ApplyCmd: edgewell profiles apply &lt;name&gt;
+  ApplyCmd: applying<br/>pickProfile(name) -> overrides<br/>{label, localModel, rag, p2p, vector, companion}
+
+  ApplyCmd --> Applied: write ~/.edgewell/state.json
+  Applied: applied (persisted to disk)
+
+  Applied --> NextBoot: next CLI invocation
+  NextBoot: next boot<br/>loadConfig() merges state.json overrides
+
+  NextBoot --> Mobile: name == "mobile"
+  NextBoot --> Tinkerer: name == "tinkerer"
+  NextBoot --> Desktop: name == "desktop"
+
+  Mobile: mobile<br/>localModel = LLAMA_3_2_1B_INST_Q4_0<br/>delegateModel = LLAMA_3_1_8B_INST_Q4_K_M<br/>rag.chunkSize=200 rag.topK=3<br/>vector.dim=96 (kind=hash)<br/>p2p.enabled=true timeoutMs=8000<br/>companion.host=0.0.0.0 port=8787
+
+  Tinkerer: tinkerer<br/>localModel = LLAMA_3_2_1B_INST_Q4_0<br/>delegateModel = LLAMA_3_1_8B_INST_Q4_K_M<br/>rag.chunkSize=300 rag.topK=4<br/>vector.dim=64 (kind=hash)<br/>p2p.enabled=true timeoutMs=15000<br/>companion.host=0.0.0.0 port=8787
+
+  Desktop: desktop<br/>localModel = LLAMA_3_1_8B_INST_Q4_K_M<br/>delegateModel = MEDPSY_4B_INST_Q4_K_M<br/>rag.chunkSize=600 rag.topK=6<br/>vector.dim=256 (kind=hash)<br/>p2p.enabled=false timeoutMs=5000<br/>companion.host=127.0.0.1 port=8788
+
+  Mobile --> Active
+  Tinkerer --> Active
+  Desktop --> Active
+
+  Active: active - overrides in effect<br/>createEdgeWell() picks the model,<br/>RAG chunk size, P2P timeout, vector dim
+
+  Active --> Default: edgewell profiles reset

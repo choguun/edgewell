@@ -1,0 +1,145 @@
+%% EdgeWell v3.0.1 — top-level architecture
+%% Sources: src/index.ts (createEdgeWell), src/agents/orchestrator.ts,
+%%          src/agents/health.ts, src/peer-mesh.ts, src/p2p.ts (DelegatingLLM),
+%%          src/profiles.ts, src/rag.ts, src/hybrid-search.ts,
+%%          src/retrieval-fusion.ts, src/reranker.ts, src/tools.ts,
+%%          src/tool-agent.ts, src/companion/server.ts, src/multimodal/index.ts,
+%%          src/qvac.ts, src/registry.ts, src/crypto.ts, src/redact.ts,
+%%          src/encrypted-store.ts, src/commands/snapshot-sign.ts
+
+flowchart TB
+  subgraph USER["User surface"]
+    direction TB
+    U([User])
+    CLI["CLI bin/edgewell.js<br/>ask / chat / companion<br/>multimodal / profiles / snapshot-sign"]
+    WEBUI["Web UI (web/)<br/>static SPA, no build step"]
+    HTTP["Companion HTTP server<br/>src/companion/server.ts<br/>port 8787, HMAC bearer tokens"]
+  end
+
+  U --> CLI
+  U --> WEBUI
+  WEBUI -- "fetch /chat, /journal" --> HTTP
+
+  subgraph ORCH["Orchestration"]
+    direction TB
+    ORC["Orchestrator<br/>src/agents/orchestrator.ts<br/>ask / streamAsk / handle"]
+    ROUTER["Router LLM call<br/>system=ROUTER_SYSTEM<br/>maxTokens=120, temperature=0"]
+    PARSE["parseRoute text<br/>strip code fences, parse first braces"]
+    KW["Keyword fallback<br/>health regex / finance regex / lifestyle default"]
+  end
+
+  CLI -- "edgewell ask | chat" --> ORC
+  HTTP -- "POST /chat -> ew.orchestrator.handle" --> ORC
+  CLI -- "edgewell multimodal <file>" --> MM["ingestPath dispatcher<br/>src/multimodal/index.ts<br/>by file extension"]
+
+  ORC --> ROUTER
+  ROUTER -- "{agent, reason}" --> PARSE
+  PARSE -- valid --> DISPATCH
+  PARSE -- invalid --> KW
+  KW --> DISPATCH
+
+  subgraph SPEC["Specialists"]
+    direction LR
+    H["HealthAgent<br/>src/agents/health.ts"]
+    F["FinanceAgent<br/>src/agents/finance.ts"]
+    S["SleepAgent<br/>src/agents/sleep.ts"]
+    N["NutritionAgent<br/>src/agents/nutrition.ts"]
+    HY["HydrationAgent<br/>src/agents/hydration.ts"]
+    A["ActivityAgent<br/>src/agents/activity.ts"]
+    L["Lifestyle (default)<br/>LIFESTYLE_SYSTEM prompt"]
+  end
+
+  DISPATCH --> H
+  DISPATCH --> F
+  DISPATCH --> S
+  DISPATCH --> N
+  DISPATCH --> HY
+  DISPATCH --> A
+  DISPATCH --> L
+
+  subgraph RETR["Retrieval"]
+    direction TB
+    RAG["RagIndex<br/>src/rag.ts<br/>chunkText -> TF-IDF -> cosine"]
+    VEC["VectorIndex<br/>src/vector-index.ts<br/>embedder: hash or QVAC"]
+    RRF["Reciprocal Rank Fusion<br/>src/retrieval-fusion.ts (k0=60)"]
+    RERANK["Reranker<br/>src/reranker.ts"]
+    HYBS["HybridSearch<br/>src/hybrid-search.ts"]
+  end
+
+  subgraph TOOLS["Tool layer"]
+    direction TB
+    TAG["ToolAgent<br/>src/tool-agent.ts<br/>maxRounds=3, stuck-loop guard"]
+    TR["ToolRegistry<br/>src/tools.ts<br/>calculator, datetime,<br/>search_kb, add_expense, add_journal"]
+  end
+
+  H --> RAG
+  F --> RAG
+  S --> RAG
+  N --> RAG
+  HY --> RAG
+  A --> RAG
+  RAG --> HYBS
+  VEC --> HYBS
+  HYBS --> RRF --> RERANK
+  H --> TAG
+  F --> TAG
+  S --> TAG
+  N --> TAG
+  HY --> TAG
+  A --> TAG
+  TAG --> TR
+
+  subgraph INFER["Inference (local + P2P)"]
+    direction TB
+    DEL["DelegatingLLM<br/>src/p2p.ts<br/>peer-first, local fallback"]
+    MESH["PeerMesh<br/>src/peer-mesh.ts<br/>healthy = parallel ping, sort by latency"]
+    P1["PeerClient A<br/>(desktop node)"]
+    P2["PeerClient B<br/>(peer node)"]
+    PN["PeerClient N"]
+    SRV["startServer<br/>POST /completion (NDJSON)<br/>GET /health, /metrics"]
+    LOCAL["EdgeWellLLM<br/>src/qvac.ts<br/>local fallback"]
+    SDK["QVAC SDK<br/>@qvac/sdk"]
+    REG["Model registry<br/>src/registry.ts<br/>LLAMA_3_2_1B_INST_Q4_0<br/>LLAMA_3_1_8B_INST_Q4_K_M<br/>MEDPSY_4B_INST_Q4_K_M<br/>captioner / transcriber"]
+  end
+
+  H --> DEL
+  F --> DEL
+  L --> DEL
+  ROUTER --> DEL
+  DEL --> MESH
+  MESH -- stream / broadcast --> P1
+  MESH --> P2
+  MESH --> PN
+  P1 --> SRV
+  P2 --> SRV
+  SRV --> SDK --> REG
+  DEL -- "all peers fail -> warn+stderr" --> LOCAL --> SDK --> REG
+
+  subgraph PROF["Profiles (src/profiles.ts)"]
+    direction LR
+    MOB["mobile<br/>LLAMA 1B local, 8B peer<br/>vec.dim=96, p2p.timeout=8s"]
+    TINK["tinkerer (Pi 4/5)<br/>LLAMA 1B local, 8B peer<br/>vec.dim=64, p2p.timeout=15s"]
+    DESK["desktop<br/>LLAMA 8B local, MEDPSY 4B peer<br/>vec.dim=256, p2p off"]
+  end
+
+  PROF --> CFG["loadConfig overrides<br/>applied at boot"]
+  CFG --> ORC
+  CFG --> DEL
+  CFG --> RAG
+  CFG --> HTTP
+
+  subgraph SEC["Security and Storage"]
+    direction TB
+    CR["crypto.ts<br/>scrypt + AES-256-GCM"]
+    RE["redact.ts<br/>PII scrubber (emails, phones,<br/>Thai IDs, IBANs)"]
+    SS["snapshot-sign.ts<br/>SHA-256 detached signature"]
+    ES["encrypted-store.ts<br/>at-rest envelope"]
+    JSONL["JSONL stores<br/>journal / expenses / profile"]
+  end
+
+  JSONL --> CR --> ES
+  TR --> JSONL
+  TAG --> JSONL
+  RE --> SS
+  CLI -- "edgewell redact" --> RE
+  CLI -- "edgewell snapshot-sign" --> SS

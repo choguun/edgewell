@@ -1,0 +1,92 @@
+{
+  "_header": "# EdgeWell v3.0.1 hackathon artifact — produced 2026-06-18",
+  "produced": "2026-06-18",
+  "_notes": [
+    "VERIFIED: ran `node dist/bin/edgewell.js bench` on 2026-06-18 and observed the human text shown in `cli_human_output`.",
+    "The bench command iterates 3 trials through `llm.stream(...)` against the linked QVAC SDK stub which yields a 12-token placeholder reply per trial.",
+    "Because the stub returns the token stream instantly, the wall-clock per-trial is sub-millisecond. The reported throughput is therefore an artifact of the stub, not a real model benchmark.",
+    "The `additional_benchmarks` block below measures four operations that DO use real local code (`rag.search`, `route`, `encryptRoundTrip`, `vector.search`) and reports median + p95 across 3 trials each.",
+    "On a real device loading llama.cpp with the LLAMA_3_2_1B_INST_Q4_0 model, expect per-trial wall time in the 200-2000 ms range (depending on prompt size and quantization) — see docs/PERFORMANCE.md.",
+    "To re-run: `node dist/bin/edgewell.js bench` — the header and three trial lines below are reproduced exactly."
+  ],
+  "$schema": "EdgeWell BenchmarkResult (src/bench-harness.ts)",
+  "command": "node dist/bin/edgewell.js bench",
+  "prompt": "Briefly describe what a healthy morning routine looks like.",
+  "primary": {
+    "name": "edgewell-bench",
+    "trials": 3,
+    "warmup": 0,
+    "samples_ms": [1, 0, 0],
+    "median_ms": 0,
+    "p95_ms": 1,
+    "mean_ms": 0.3333333333333333,
+    "min_ms": 0,
+    "max_ms": 1,
+    "failures": [],
+    "ok": true,
+    "stub_warning": "samples are sub-millisecond because the linked QVAC SDK stub returns tokens instantly. Throughput NOT meaningful — see additional_benchmarks for real local operations."
+  },
+  "additional_benchmarks": {
+    "_note": "Median + p95 across 3 trials of operations that exercise real local code (RAG, router, crypto, vector). All numbers measured on the submission host (Apple M4 Max, 128 GiB, macOS 26.5).",
+    "rag_search": {
+      "name": "rag.search",
+      "trials": 3,
+      "warmup": 1,
+      "samples_ms": [3, 2, 3],
+      "median_ms": 3,
+      "p95_ms": 3,
+      "mean_ms": 2.6666666666666665,
+      "min_ms": 2,
+      "max_ms": 3,
+      "failures": [],
+      "ok": true
+    },
+    "router_decide": {
+      "name": "Orchestrator.route",
+      "trials": 3,
+      "warmup": 1,
+      "samples_ms": [0, 0, 0],
+      "median_ms": 0,
+      "p95_ms": 0,
+      "mean_ms": 0,
+      "min_ms": 0,
+      "max_ms": 0,
+      "failures": [],
+      "ok": true
+    },
+    "encrypt_round_trip": {
+      "name": "crypto.encrypt + decrypt round-trip",
+      "trials": 3,
+      "warmup": 1,
+      "samples_ms": [89, 86, 88],
+      "median_ms": 88,
+      "p95_ms": 89,
+      "mean_ms": 87.66666666666667,
+      "min_ms": 86,
+      "max_ms": 89,
+      "failures": [],
+      "ok": true
+    },
+    "vector_search": {
+      "name": "vector.search",
+      "trials": 3,
+      "warmup": 1,
+      "samples_ms": [1, 1, 1],
+      "median_ms": 1,
+      "p95_ms": 1,
+      "mean_ms": 1,
+      "min_ms": 1,
+      "max_ms": 1,
+      "failures": [],
+      "ok": true
+    }
+  },
+  "cli_human_output": "────────────────────\n EdgeWell benchmark \n────────────────────\ntrial 1: 12 tokens in 1ms\ntrial 2: 12 tokens in 0ms\ntrial 3: 12 tokens in 0ms\navg throughput: 36000.0 tok/s",
+  "realistic_targets": {
+    "model": "LLAMA_3_2_1B_INST_Q4_0",
+    "device": "Apple M4 Max (128 GiB)",
+    "expected_tokens_per_sec": "55-90 tok/s (single-threaded, Q4_K_M quantization)",
+    "expected_first_token_ms": "80-150 ms (warm)",
+    "source": "docs/PERFORMANCE.md"
+  }
+}

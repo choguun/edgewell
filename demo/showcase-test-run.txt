@@ -1,0 +1,13 @@
+✔ showcase command module loads (0.421042ms)
+✔ showcase handler does not throw on default args (1.479ms)
+✔ showcase prints router decisions for health, finance, and lifestyle (0.406875ms)
+✔ showcase exercises at least one tool call (0.314083ms)
+✔ showcase prints a p2p fallback warning (0.700709ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 95.576083

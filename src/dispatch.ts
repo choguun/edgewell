@@ -63,6 +63,7 @@ import { monthSummaryCommand } from "./commands/month-summary.js";
 import { watchCommand } from "./commands/watch.js";
 import { compareCommand } from "./commands/compare.js";
 import { commandListCommand } from "./commands/command-list.js";
+import { showcaseCommand } from "./commands/showcase.js";
 import { importCommand as _dupImport } from "./commands/import.js";
 import { benchCompareCommand } from "./commands/bench-compare.js";
 import { profileImportCommand } from "./commands/profile-import.js";
@@ -279,6 +280,7 @@ const MAP_RAW: RawMap = {
   watch: watchCommand,
   compare: compareCommand,
   "command-list": commandListCommand,
+  showcase: showcaseCommand,
   prompt: promptCommand,
   goals: goalsCommand,
   "journal-rag-top": journalRagTopCommand,

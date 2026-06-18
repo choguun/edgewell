@@ -67,6 +67,7 @@ const HIGHLIGHTS: readonly Highlight[] = [
   ["doctor", "Run self-checks"],
   ["config", "Print the resolved config"],
   ["version", "Print version"],
+  ["showcase", "Multi-agent + tool-calling + P2P demo"],
   ["help", "This help"],
   ["command-list", "Print every wired subcommand name"],
 ];

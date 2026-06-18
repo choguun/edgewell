@@ -1,0 +1,87 @@
+{
+  "_header": "# EdgeWell v3.0.1 hackathon artifact — produced 2026-06-18",
+  "produced": "2026-06-18",
+  "$schema": "EdgeWell v3.0.1 agents manifest",
+  "product": "edgewell v3.0.0 (hackathon cut v3.0.1)",
+  "command_observed": "node --import tsx bin/edgewell.ts agents",
+  "raw_cli_output": "──────────────────────────\n EdgeWell agents (v3.0.0) \n──────────────────────────\n  health       Symptom checker, lab results, general health Q&A.\n  finance      Budgeting, expense analysis, monthly planning.\n  sleep        Sleep phase events, total hours, verdict.\n  nutrition    Meal regularity, average meals per day.\n  hydration    Daily water intake, goal tracking.\n  activity     Steps per day, goal tracking, sedentary flags.",
+  "agents": [
+    {
+      "name": "health",
+      "module": "src/agents/health.ts",
+      "role": "specialist",
+      "systemPromptSummary": "EdgeWell Health — private on-device wellness coach. Calm, supportive, concise. Cites RAG context from the user's journal + wearables. Includes a non-diagnostic disclaimer ('I'm an AI, not a doctor...') at the end of every medical reply, and routes emergency signals (chest pain, stroke, suicidal thoughts) to immediate help.",
+      "tools": ["rag.search", "llm.prompt", "llm.stream"],
+      "keywords": ["symptom", "sleep", "exercise", "diet", "medication", "pain", "stress", "mood"],
+      "cli_description": "Symptom checker, lab results, general health Q&A."
+    },
+    {
+      "name": "finance",
+      "module": "src/agents/finance.ts",
+      "role": "specialist",
+      "systemPromptSummary": "EdgeWell Finance — private on-device personal finance coach. Concrete: cites numbers from the user's expenses JSONL. Categories, percentages, time horizons. No investment product recommendations. Closes with 'Note: not financial advice.'",
+      "tools": ["rag.search", "expenses.readAll", "expenses.summaryByCategory", "llm.prompt", "llm.stream"],
+      "keywords": ["money", "budget", "expense", "saving", "debt", "income", "price", "thb", "usd", "baht"],
+      "cli_description": "Budgeting, expense analysis, monthly planning."
+    },
+    {
+      "name": "sleep",
+      "module": "src/agents/sleep.ts",
+      "role": "specialist",
+      "systemPromptSummary": "EdgeWell Sleep — RAG-grounded tips over the user's sleep notes. Computes total hours, flags phase events, returns a verdict.",
+      "tools": ["rag.search", "llm.prompt"],
+      "keywords": ["sleep", "rest", "insomnia"],
+      "cli_description": "Sleep phase events, total hours, verdict."
+    },
+    {
+      "name": "nutrition",
+      "module": "src/agents/nutration.ts",
+      "role": "specialist",
+      "systemPromptSummary": "EdgeWell Nutrition — meal regularity, average meals per day, food-mood correlations. Pairs with hydration for daily plan.",
+      "tools": ["rag.search", "journal.readAll", "llm.prompt"],
+      "keywords": ["meal", "food", "diet", "calorie", "nutrition"],
+      "cli_description": "Meal regularity, average meals per day."
+    },
+    {
+      "name": "hydration",
+      "module": "src/agents/hydration.ts",
+      "role": "specialist",
+      "systemPromptSummary": "EdgeWell Hydration — daily water intake against goal, electrolyte balance, suggestions for hot/humid days.",
+      "tools": ["rag.search", "llm.prompt"],
+      "keywords": ["water", "hydration", "electrolyte"],
+      "cli_description": "Daily water intake, goal tracking."
+    },
+    {
+      "name": "activity",
+      "module": "src/agents/activity.ts",
+      "role": "specialist",
+      "systemPromptSummary": "EdgeWell Activity — steps/day against goal, sedentary flags, exercise recommendations from journal notes.",
+      "tools": ["rag.search", "llm.prompt"],
+      "keywords": ["step", "walk", "run", "exercise", "sedentary"],
+      "cli_description": "Steps per day, goal tracking, sedentary flags."
+    },
+    {
+      "name": "orchestrator",
+      "module": "src/agents/orchestrator.ts",
+      "role": "router",
+      "systemPromptSummary": "EdgeWell Router — given a user question, outputs a single JSON object { agent: 'health' | 'finance' | 'lifestyle', reason }. Strips code fences. Falls back to keyword regex on health/finance keywords. Falls through to lifestyle for anything else. Lifestyle uses the LIFESTYLE_SYSTEM prompt ('private on-device habits coach, routines, productivity, mixed health+finance').",
+      "tools": ["llm.prompt", "llm.stream"],
+      "keywords": ["router", "lifestyle"],
+      "cli_description": "Router (not listed by `edgewell agents`, but constructs every other agent via createEdgeWell())."
+    }
+  ],
+  "routing": {
+    "prompt_path": "src/agents/orchestrator.ts:ROUTER_SYSTEM",
+    "valid_set": ["health", "finance", "lifestyle"],
+    "keyword_fallback": {
+      "health": ["symptom", "sleep", "exercise", "diet", "medication", "pain", "stress", "mood"],
+      "finance": ["money", "budget", "expense", "saving", "debt", "income", "price", "thb", "usd", "baht"],
+      "default": "lifestyle"
+    }
+  },
+  "notes": [
+    "`edgewell agents` outputs only the 6 specialist descriptions; it does not list the orchestrator (which is a router, not a specialist) or lifestyle. The JSON above adds Orchestrator explicitly because AGENTS.md and src/index.ts both list it as a first-class agent.",
+    "The `module` paths are taken from the AGENTS.md specialist inventory table and confirmed by src/index.ts:createEdgeWell().",
+    "systemPromptSummary is paraphrased from the SYSTEM constant in each agent module — not the raw prompt text, to keep this file compact."
+  ]
+}
