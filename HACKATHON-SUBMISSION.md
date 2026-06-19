@@ -615,7 +615,20 @@ node bin/edgewell.js bench
 A JSON form of the same numbers, with profile + model + chunk + vector
 metadata, is saved to `artifacts/bench.json` by the sibling artifact-builder.
 
-### 10.2 Numbers from `docs/PERFORMANCE.md`
+### 10.2 Cross-profile bench with `edgewell bench-profile`
+
+`edgewell bench-profile` is the cross-profile cousin of `edgewell bench`: it
+runs the same three micro-operations — `rag.search`, `Orchestrator.route`,
+and `vector.search` — once per form-factor profile (`mobile`, `tinkerer`,
+`desktop`) using the profile's actual `chunkSize` / `topK` / `vector.dim`
+knobs from `src/profiles.ts`, then prints an ASCII table with the per-profile
+medians plus a hand-tuned `expected tok/s` column derived from
+`docs/PERFORMANCE.md` and the model registry's `tier` + `ramGb` fields. The
+machine-readable form is captured in `artifacts/bench-profile.json`; the
+human-readable transcript in `artifacts/bench-profile.txt` (both produced
+`# EdgeWell v3.0.1 hackathon artifact — produced 2026-06-18`).
+
+### 10.3 Numbers from `docs/PERFORMANCE.md`
 
 | Path                                      | Cost                                | Pi 4           | Desktop CPU    |
 |-------------------------------------------|-------------------------------------|----------------|----------------|
@@ -627,7 +640,7 @@ metadata, is saved to `artifacts/bench.json` by the sibling artifact-builder.
 | Real QVAC inference (Pi 4)                | 50–200 tokens/s                     | ✅             | n/a            |
 | Real QVAC inference (desktop CPU)         | 200–800 tokens/s                    | n/a            | ✅             |
 
-### 10.3 P2P load distribution
+### 10.4 P2P load distribution
 
 `DelegatingLLM` tries the peer first via `PeerClient.stream()`. If the
 peer yields at least one token, the local model never runs. The
@@ -640,7 +653,7 @@ distribution looks like:
 - **Peer returns partial stream then dies** — the partial answer is kept;
   the loop doesn't kick off a second request.
 
-### 10.4 `tinkerer` profile's 15 s P2P timeout
+### 10.5 `tinkerer` profile's 15 s P2P timeout
 
 The `tinkerer` profile deliberately extends `p2p.timeoutMs` from 8 s
 (mobile) and 5 s (desktop) up to 15 s. The rationale is that a Pi on a
@@ -694,6 +707,7 @@ per-call. For a future per-call policy, the registry's
 `pickModel({ domain: "medical" })` is the natural seam — see
 `src/registry.ts`.
 
+
 ### 11.3 Multimodal captioning / transcription via the same SDK
 
 `src/multimodal/image.ts` and `src/multimodal/audio.ts` accept a caller-
@@ -702,6 +716,46 @@ or speech model, the same `await import("@qvac/sdk")` path used by
 `EdgeWellLLM` can back these hooks — there is no second runtime. The
 default is an offline-friendly placeholder so the pipeline works without
 network or model installs.
+
+### 11.4 Psy showcase command — `edgewell psy`
+
+`edgewell psy` is a one-shot demo that exercises the Psy catalog and
+the orchestrator's domain-aware routing. It lists every registered
+Psy-family model, classifies three representative mental-health
+questions through the expanded mental-health keyword regex
+(`/anxiety|therapy|panic|mental|psych|depress|insomnia|ptsd/i`),
+resolves the right model via `pickModel({ domain: "medical", tier })`,
+and prints a canned stub reply per routed question so the command
+runs end-to-end without a live SDK. Live transcript captured to
+`artifacts/psy-routing.log` (45-line command output + 12-line header).
+
+The 4 Psy-family models in the codebase:
+
+- `MEDPSY_1_7B_Q4_K_M` — 1.7B, ~2 GB RAM, `tier=small`, `domain=medical`
+  (registry, used for triage)
+- `MEDPSY_4B_Q4_K_M` — 4B, ~3 GB RAM, `tier=small`, `domain=medical`
+  (registry, used for clinical)
+- `MEDPSY_4B_INST_Q4_K_M` — 4B, ~3 GB RAM, `tier=small`, `domain=medical`
+  (desktop profile's `delegateModel`; resolved by the `psy` command when
+  no `MEDPSY_*_Q4_K_M` matches the requested tier, surfacing the full
+  Psy family even before the registry is extended)
+
+**Creative use:** the orchestrator's keyword router
+(`src/agents/orchestrator.ts`, `parseRoute`) now tags mental-health
+questions with `domain: "medical"` (added to the `RouteResult`
+interface in v3.0.1). When that tag is present **and** the question
+is complex (chronic, medication, therapy, severe), the `psy` command
+and any future per-call delegate policy can read it and call
+`pickModel({ domain: "medical" })` to resolve
+`MEDPSY_4B_INST_Q4_K_M` (the desktop profile's `delegateModel` in
+`src/profiles.ts`). This is the natural seam for promoting a request
+to a medical-specialised peer at runtime, and it's wired today as
+read-only inspection in the showcase.
+
+```bash
+node dist/bin/edgewell.js psy      # 45-line transcript, no SDK needed
+```
+
 
 ## 12. Artifact Index
 
@@ -713,6 +767,7 @@ network or model installs.
 | `artifacts/hardware-proof.txt`                | artifact-builder    | Profile knobs + tokens/s, one line per profile                   |
 | `artifacts/test-summary.txt`                  | `pnpm test` capture | TAP summary of the unit + integration suite                      |
 | `artifacts/orchestrator-trace.txt`            | artifact-builder    | Worked routing trace over 12 sample questions                    |
+| `artifacts/psy-routing.log`                   | `edgewell psy`      | Live Psy catalog + domain-aware routing transcript (45 lines)   |
 | `artifacts/agents-manifest.json`              | static              | Machine-readable list of agents + tools                          |
 | `artifacts/source-sha256.txt`                 | artifact-builder    | Reproducibility fingerprint of the source tree                   |
 | `artifacts/file-list.txt`                     | `git ls-files`      | Exact list of tracked files                                      |

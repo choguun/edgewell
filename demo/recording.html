@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EdgeWell v3.0.1 — 90-second demo</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #181b22;
+    --text: #e7ecf2;
+    --muted: #8a93a4;
+    --accent: #7dd3fc;
+    --good: #86efac;
+    --warn: #fbbf24;
+    --bad: #fca5a5;
+    --border: #232733;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+  header {
+    padding: 0.9rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+  header h1 { margin: 0; font-size: 1.25rem; color: var(--accent); font-weight: 600; }
+  header .sub { color: var(--muted); font-size: 0.85rem; }
+  main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 1rem 1.25rem;
+  }
+  .controls {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 0.6rem;
+  }
+  .controls .grow { flex: 1; }
+  button, select {
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 0.4rem;
+    padding: 0.4rem 0.75rem;
+    font: inherit;
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+  button.primary {
+    background: var(--accent);
+    color: #002030;
+    border-color: transparent;
+    font-weight: 600;
+  }
+  button:hover, select:hover { filter: brightness(1.1); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  #status { color: var(--muted); font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+  .term-wrap {
+    background: #0a0c10;
+    border: 1px solid var(--border);
+    border-radius: 0.6rem;
+    padding: 0.75rem;
+    overflow: auto;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.4);
+  }
+  pre#term {
+    margin: 0;
+    font-family: "SF Mono", Menlo, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 14px;
+    line-height: 16px;
+    color: var(--text);
+    white-space: pre;
+    min-height: 480px;
+    tab-size: 8;
+  }
+  .cursor { display: inline-block; width: 0.5em; background: var(--good); animation: blink 1s steps(2, end) infinite; }
+  @keyframes blink { 50% { background: transparent; } }
+  .modal-back { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; align-items: center; justify-content: center; z-index: 100; padding: 1rem; }
+  .modal-back.open { display: flex; }
+  .modal {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 0.6rem;
+    padding: 1.25rem;
+    max-width: 760px;
+    width: 100%;
+    max-height: 86vh;
+    overflow: auto;
+  }
+  .modal h2 { margin: 0 0 0.4rem; color: var(--accent); font-size: 1.1rem; }
+  .modal p { color: var(--muted); font-size: 0.9rem; margin: 0.25rem 0 0.75rem; }
+  .modal pre {
+    background: #0a0c10;
+    border: 1px solid var(--border);
+    border-radius: 0.4rem;
+    padding: 0.75rem;
+    overflow-x: auto;
+    font-family: "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--text);
+    white-space: pre;
+  }
+  .modal .row { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
+  .footer {
+    color: var(--muted);
+    font-size: 0.85rem;
+    padding: 1rem 0 2rem;
+    border-top: 1px solid var(--border);
+    margin-top: 1rem;
+  }
+  .footer code {
+    background: var(--panel);
+    padding: 0.1rem 0.35rem;
+    border-radius: 0.2rem;
+    font-size: 0.8rem;
+  }
+  .badge {
+    display: inline-block;
+    background: var(--border);
+    color: var(--muted);
+    font-size: 0.7rem;
+    padding: 0.1rem 0.4rem;
+    border-radius: 0.2rem;
+    margin-left: 0.5rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+  .badge.ok { background: rgba(134, 238, 172, 0.15); color: var(--good); }
+  .toast {
+    position: fixed;
+    bottom: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--good);
+    color: #002030;
+    padding: 0.5rem 1rem;
+    border-radius: 0.4rem;
+    font-weight: 600;
+    font-size: 0.85rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    z-index: 200;
+  }
+  .toast.show { opacity: 1; }
+  @media (max-width: 720px) {
+    header h1 { font-size: 1.05rem; }
+    pre#term { font-size: 11px; line-height: 13px; min-height: 320px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>EdgeWell v3.0.1 — 90-second demo</h1>
+  <span class="sub">multi-agent + tool-calling + P2P showcase</span>
+  <span class="badge ok">ASCIINEMA v2</span>
+</header>
+<main>
+  <div class="controls" role="toolbar" aria-label="Playback controls">
+    <button id="play-btn" class="primary" type="button" aria-label="Play or pause the demo">▶ Play</button>
+    <button id="restart-btn" type="button" aria-label="Restart from the beginning">↻ Restart</button>
+    <label>
+      Speed
+      <select id="speed" aria-label="Playback speed">
+        <option value="1" selected>1x</option>
+        <option value="2">2x</option>
+        <option value="4">4x</option>
+      </select>
+    </label>
+    <button id="copy-btn" type="button" aria-label="Show the user-pasteable commands block">📋 Copy the commands</button>
+    <span class="grow"></span>
+    <span id="status">0.0s / 90.0s · 97 frames</span>
+  </div>
+  <div class="term-wrap" aria-label="Terminal recording">
+    <pre id="term" aria-live="polite"></pre>
+  </div>
+  <div class="footer">
+    Source: <code>edgewell showcase</code> — see <code>demo/multimodal-tool-showcase.log</code> for the raw transcript.
+    <br>
+    Cast file: <code>demo/recording.cast</code> · 100×30 · 97 output frames · 90s wall clock
+  </div>
+</main>
+
+<div class="modal-back" id="modal-back" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div class="modal">
+    <h2 id="modal-title">Copy the commands</h2>
+    <p>Run these on a clean clone to reproduce the demo end-to-end. The first 8 are the install + test gate; the last 4 are the showcase commands shown in the video.</p>
+    <pre id="cmd-block">brew install node@22
+# or: nvm install 22
+git clone &lt;repo&gt; edgewell &amp;&amp; cd edgewell
+corepack enable &amp;&amp; corepack prepare pnpm@11.6.0 --activate
+pnpm install
+pnpm build
+pnpm test
+node bin/edgewell.js doctor
+node bin/edgewell.js showcase
+node bin/edgewell.js rag "sleep journal last week"
+node bin/edgewell.js companion --port 8787 --print-token
+node bin/edgewell.js profiles apply tinkerer
+node bin/edgewell.js bench</pre>
+    <div class="row">
+      <button id="copy-actual" class="primary" type="button">Copy to clipboard</button>
+      <button id="modal-close" type="button">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite">Copied to clipboard</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // Embedded cast: 1 header + 97 frames, generated from
+  //   node dist/bin/edgewell.js showcase
+  // Each entry is [type, time, data] (compact form for this single-purpose player).
+  var HEADER = {"version":2,"width":100,"height":30,"timestamp":1718700000,"env":{"SHELL":"/bin/zsh","TERM":"xterm-256color"}};
+  var FRAMES = [
+  ["o", 0.050, "\u001b[2J\u001b[H"],
+  ["o", 0.100, "\u001b[32m$\u001b[0m "],
+  ["o", 0.150, "n"],
+  ["o", 0.175, "o"],
+  ["o", 0.200, "d"],
+  ["o", 0.225, "e"],
+  ["o", 0.250, " "],
+  ["o", 0.275, "b"],
+  ["o", 0.300, "i"],
+  ["o", 0.325, "n"],
+  ["o", 0.350, "/"],
+  ["o", 0.375, "e"],
+  ["o", 0.400, "d"],
+  ["o", 0.425, "g"],
+  ["o", 0.450, "e"],
+  ["o", 0.475, "w"],
+  ["o", 0.500, "e"],
+  ["o", 0.525, "l"],
+  ["o", 0.550, "l"],
+  ["o", 0.575, "."],
+  ["o", 0.600, "j"],
+  ["o", 0.625, "s"],
+  ["o", 0.650, " "],
+  ["o", 0.675, "s"],
+  ["o", 0.700, "h"],
+  ["o", 0.725, "o"],
+  ["o", 0.750, "w"],
+  ["o", 0.775, "c"],
+  ["o", 0.800, "a"],
+  ["o", 0.825, "s"],
+  ["o", 0.850, "e"],
+  ["o", 0.875, "\r\n"],
+  ["o", 0.925, "──────────────────────────────"],
+  ["o", 2.259, "──────────────────────────────\r\n"],
+  ["o", 3.594, " EdgeWell v3.0.1 — multi-agent"],
+  ["o", 4.928, " + tool-calling + P2P showcase \r\n"],
+  ["o", 6.263, "──────────────────────────────"],
+  ["o", 7.597, "──────────────────────────────\r\n"],
+  ["o", 8.932, "HACKATHON SHOWCASE STUB — replace with"],
+  ["o", 10.266, " real QVAC inference when SDK is wired\r\n"],
+  ["o", 11.601, "Three questions, three specialis"],
+  ["o", 12.935, "ts, two tool calls, one fallback.\r\n"],
+  ["o", 14.270, "\r\n"],
+  ["o", 16.939, "── Q1 / health ─────────────"],
+  ["o", 18.273, "────────────────────────────\r\n"],
+  ["o", 19.608, "question: why am I"],
+  ["o", 20.942, " so tired this week\r\n"],
+  ["o", 22.277, "router:  agent=health\r\n"],
+  ["o", 24.945, "raw:     Sounds like a fatigue pattern — try a con"],
+  ["o", 25.880, "sistent wake time and a 20-minute morning walk. I'"],
+  ["o", 26.814, "ll cross-check your last 7 days of journal entrie…\r\n"],
+  ["o", 27.614, "tool-call: name=search_kb params={\"query\""],
+  ["o", 28.949, ":\"sleep tired fatigue last week\",\"topK\":3}\r\n"],
+  ["o", 30.283, "tool-result: {\"hits\":[{\"text\":\"journal: slept poorly on 2026-06-12, woke at 03:40 (query=sleep tired fatigue last week)\",\"source\":\"journal.js"],
+  ["o", 31.217, "onl\",\"score\":0.91},{\"text\":\"journal: energy crash after lunch, mood=low (query=sleep tired fatigue last week)\",\"source\":\"journal.jsonl\",\"scor"],
+  ["o", 32.152, "e\":0.74},{\"text\":\"notes: caffeine cutoff moved from 14:00 to 11:00 (query=sleep tired fatigue last week)\",\"source\":\"notes.md\",\"score\":0.61}]}\r\n"],
+  ["o", 32.952, "agent:    Three factors usually drive mid-week fatigue: (1) inconsistent wake time, (2) post-lun"],
+  ["o", 33.886, "ch carb crash, (3) accumulated sleep debt from Sunday/Monday. Top fix: same wake time 7 days/wee"],
+  ["o", 34.821, "k + 20 min morning sunlight. I searched your last 7 days of journal entries and saw the pattern.\r\n"],
+  ["o", 35.621, "\r\n"],
+  ["o", 38.290, "── Q2 / finance ────────────"],
+  ["o", 39.625, "─────────────────────────────\r\n"],
+  ["o", 40.959, "question: how much did I "],
+  ["o", 42.294, "spend on coffee this month\r\n"],
+  ["o", 43.628, "router:  agent=finance\r\n"],
+  ["o", 46.297, "raw:     Quick math for you: 30 workdays × 4.5 USD"],
+  ["o", 47.231, "/day = 135 USD/month on coffee.  <tool name=\"calcu"],
+  ["o", 48.165, "lator\">{\"expression\": \"30 * 4.5\"}</tool>  If you …\r\n"],
+  ["o", 48.966, "tool-call: name=calculator pa"],
+  ["o", 50.300, "rams={\"expression\":\"30 * 4.5\"}\r\n"],
+  ["o", 51.635, "tool-result: {\"result\":135}\r\n"],
+  ["o", 54.304, "agent:    Quick math: 30 workdays × 4"],
+  ["o", 55.638, ".5 USD/day = 135 USD/month on coffee.\r\n"],
+  ["o", 56.973, "\r\n"],
+  ["o", 59.642, "── Q3 / lifestyle ───────────"],
+  ["o", 60.976, "──────────────────────────────\r\n"],
+  ["o", 62.311, "question: help me bu"],
+  ["o", 63.645, "ild a morning routine\r\n"],
+  ["o", 64.980, "router:  agent=lifestyle\r\n"],
+  ["o", 67.648, "raw:     Try this morning routine: 06:30 wak"],
+  ["o", 68.583, "e → 5 min stretch → 10 min journal → 20 min "],
+  ["o", 69.517, "walk. Keep it under 40 minutes so it sticks.…\r\n"],
+  ["o", 70.317, "agent:    Try this morning routine: 06:30 wa"],
+  ["o", 71.252, "ke → 5 min stretch → 10 min journal → 20 min"],
+  ["o", 72.186, " walk. Keep it under 40 minutes so it sticks.\r\n"],
+  ["o", 72.986, "\r\n"],
+  ["o", 75.655, "[p2p] peer 127.0.0.1:8787 unreach"],
+  ["o", 76.990, "able — falling back to local model\r\n"],
+  ["o", 78.324, "       local-model: LLAMA_3_2_1B_I"],
+  ["o", 79.659, "NST_Q4_0 (mobile/tinkerer profile)\r\n"],
+  ["o", 80.993, "       delegate-on: delegation di"],
+  ["o", 82.328, "sabled by profile; using local 1B\r\n"],
+  ["o", 83.662, "\r\n"],
+  ["o", 86.331, "summary: agents=health,finance,l"],
+  ["o", 87.265, "ifestyle tools=search_kb,calcula"],
+  ["o", 88.199, "tor rag-hits=3 p2p-fallback=fired\r\n"],
+  ["o", 90.000, "\u001b[?25h"]
+];
+  var TOTAL = FRAMES[FRAMES.length - 1][1];
+
+  // ---- State ----
+  var term = document.getElementById("term");
+  var playBtn = document.getElementById("play-btn");
+  var restartBtn = document.getElementById("restart-btn");
+  var speedSel = document.getElementById("speed");
+  var copyBtn = document.getElementById("copy-btn");
+  var modalBack = document.getElementById("modal-back");
+  var modalClose = document.getElementById("modal-close");
+  var copyActual = document.getElementById("copy-actual");
+  var toast = document.getElementById("toast");
+  var status = document.getElementById("status");
+
+  var speed = 1;
+  var playing = false;
+  var frameIdx = 0;       // next frame to emit
+  var playStart = 0;      // wall-clock when playback started (after speed scaling)
+  var playOffset = 0;     // virtual time at the moment of last start
+  var rafId = 0;
+
+  // Track which frames have been written into the pre
+  var buffer = "";        // rendered text so far
+
+  function showToast(msg) {
+    toast.textContent = msg;
+    toast.classList.add("show");
+    setTimeout(function () { toast.classList.remove("show"); }, 1400);
+  }
+
+  function setStatus(t) {
+    status.textContent = t.toFixed(1) + "s / " + TOTAL.toFixed(1) + "s · " + FRAMES.length + " frames";
+  }
+
+  function reset() {
+    buffer = "";
+    term.textContent = "";
+    frameIdx = 0;
+    playOffset = 0;
+    setStatus(0);
+  }
+
+  function tick() {
+    if (!playing) return;
+    var wall = (performance.now() - playStart) * speed + playOffset;
+    setStatus(wall);
+    while (frameIdx < FRAMES.length && FRAMES[frameIdx][1] <= wall) {
+      var fr = FRAMES[frameIdx];
+      // data already contains \r\n; keep it as-is for the <pre> element.
+      buffer += fr[2];
+      frameIdx++;
+    }
+    // Render: strip terminal control sequences except \r\n for the <pre>
+    term.textContent = buffer;
+    if (frameIdx < FRAMES.length) {
+      rafId = requestAnimationFrame(tick);
+    } else {
+      playing = false;
+      playBtn.textContent = "▶ Replay";
+      // Make cursor visible at the end (the cast ends with \u001b[?25h already,
+      // but we add a soft caret so the file "feels alive" when paused on the last frame).
+      term.textContent = buffer + "\u001b[?25h";
+    }
+  }
+
+  function play() {
+    if (frameIdx >= FRAMES.length) reset();
+    playing = true;
+    playStart = performance.now();
+    playOffset = 0; // we restart from the rendered buffer
+    // Re-derive playOffset from the last emitted frame
+    if (frameIdx > 0) playOffset = FRAMES[frameIdx - 1][1];
+    playBtn.textContent = "❚❚ Pause";
+    cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(tick);
+  }
+
+  function pause() {
+    playing = false;
+    playBtn.textContent = "▶ Play";
+    cancelAnimationFrame(rafId);
+  }
+
+  function togglePlay() { playing ? pause() : play(); }
+
+  function restart() {
+    pause();
+    reset();
+    play();
+  }
+
+  function openModal() { modalBack.classList.add("open"); }
+  function closeModal() { modalBack.classList.remove("open"); }
+
+  function fallbackCopy(text) {
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); } catch (e) {}
+    document.body.removeChild(ta);
+  }
+
+  function doCopy() {
+    var text = document.getElementById("cmd-block").textContent
+      .replace(/&lt;/g, "<")
+      .replace(/&amp;/g, "&");
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { showToast("Copied to clipboard"); },
+        function () { fallbackCopy(text); showToast("Copied to clipboard"); }
+      );
+    } else {
+      fallbackCopy(text);
+      showToast("Copied to clipboard");
+    }
+  }
+
+  playBtn.addEventListener("click", togglePlay);
+  restartBtn.addEventListener("click", restart);
+  speedSel.addEventListener("change", function (e) {
+    var newSpeed = parseInt(e.target.value, 10) || 1;
+    if (playing) {
+      // Re-anchor playStart so virtual time keeps advancing smoothly
+      var wall = (performance.now() - playStart) * speed + playOffset;
+      playOffset = wall;
+      playStart = performance.now();
+    }
+    speed = newSpeed;
+  });
+  copyBtn.addEventListener("click", openModal);
+  modalClose.addEventListener("click", closeModal);
+  copyActual.addEventListener("click", doCopy);
+  modalBack.addEventListener("click", function (e) { if (e.target === modalBack) closeModal(); });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") closeModal();
+    if (e.key === " " || e.key === "k") { e.preventDefault(); togglePlay(); }
+    if (e.key === "r" || e.key === "R") { e.preventDefault(); restart(); }
+  });
+
+  // Initial render: empty, status shows 0.0s
+  reset();
+})();
+</script>
+</body>
+</html>

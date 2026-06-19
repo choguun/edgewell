@@ -1,0 +1,37 @@
+# EdgeWell v3.0.1 hackathon artifact — produced 2026-06-18
+# File: artifacts/bench-profile.txt
+# Source: node dist/bin/edgewell.js bench-profile
+# Captured by: bench-profiler (MiniMax-M3)
+#
+# This is the verbatim stdout of one cross-profile run against the
+# in-tree stub LLM (the same shape src/commands/showcase.ts uses), so
+# the per-trial latencies reflect the orchestrator + RAG + vector
+# codepaths only — NOT real QVAC inference. See
+# artifacts/bench-profile.json for the machine-readable form and
+# docs/PERFORMANCE.md for the real-device expected tok/s table.
+#
+# To re-run: node dist/bin/edgewell.js bench-profile
+
+───────────────────────────────────────
+ EdgeWell cross-profile bench (v3.0.1) 
+───────────────────────────────────────
+HACKATHON BENCH-PROFILE STUB — replace with real QVAC inference when SDK is wired
+Same three operations × three profiles, identical corpus.
+read /Users/choguun/.edgewell/state.json → formFactor=tinkerer
+mobile     local=LLAMA_3_2_1B_INST_Q4_0 (tiny/1.5GB) delegate=LLAMA_3_1_8B_INST_Q4_K_M (medium/6GB) rag=200/3 vec=96 p2p=on@8000ms tps=25-40
+tinkerer   local=LLAMA_3_2_1B_INST_Q4_0 (tiny/1.5GB) delegate=LLAMA_3_1_8B_INST_Q4_K_M (medium/6GB) rag=300/4 vec=64 p2p=on@15000ms tps=15-25 ◀ current
+desktop    local=LLAMA_3_1_8B_INST_Q4_K_M (medium/6GB) delegate=MEDPSY_4B_INST_Q4_K_M (unknown/?GB) rag=600/6 vec=256 p2p=off@5000ms tps=55-90
+
+router (profile-independent): median=0.00ms p95=0.04ms (n=5)
+
+per-profile medians (ms):
+---------------------------------------------------------------------
+profile    |  rag (ms) | router (ms) | vector (ms) |   expected tok/s
+---------------------------------------------------------------------
+mobile     |      0.14 |        0.00 |        0.02 |            25-40
+tinkerer   |      0.09 |        0.00 |        0.00 |            15-25
+desktop    |      0.10 |        0.00 |        0.01 |            55-90
+---------------------------------------------------------------------
+
+expected tok/s is the per-profile ESTIMATED table — see source comments in src/commands/bench-profile.ts
+re-run with --json to dump the full BenchmarkResult for each profile × operation.

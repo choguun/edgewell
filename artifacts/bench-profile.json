@@ -1,0 +1,261 @@
+{
+  "_header": "# EdgeWell v3.0.1 hackathon artifact — produced 2026-06-18",
+  "produced": "2026-06-18",
+  "command": "edgewell bench-profile --json",
+  "currentProfile": "tinkerer",
+  "estimatedSource": "docs/PERFORMANCE.md + v3.0.0 submission brief",
+  "profiles": {
+    "mobile": {
+      "name": "mobile",
+      "label": "phone or tablet",
+      "localModel": "LLAMA_3_2_1B_INST_Q4_0",
+      "delegateModel": "LLAMA_3_1_8B_INST_Q4_K_M",
+      "rag": {
+        "chunkSize": 200,
+        "topK": 3
+      },
+      "vector": {
+        "dim": 96,
+        "kind": "hash"
+      },
+      "p2p": {
+        "enabled": true,
+        "timeoutMs": 8000
+      },
+      "estimated": {
+        "profile": "mobile",
+        "localModel": "LLAMA_3_2_1B_INST_Q4_0",
+        "modelTier": "tiny",
+        "modelRamGb": 1.5,
+        "estimatedTokPerSecLow": 25,
+        "estimatedTokPerSecHigh": 40,
+        "source": "1B Q4_0 on phone (Termux, single-threaded, warm KV cache)"
+      },
+      "rag_search": {
+        "name": "rag.search[mobile]",
+        "trials": 5,
+        "warmup": 1,
+        "samples": [
+          0.1419170000000065,
+          0.14550000000001262,
+          0.15612500000000296,
+          0.15824999999999534,
+          0.2121660000000105
+        ],
+        "median": 0.15612500000000296,
+        "p95": 0.2121660000000105,
+        "mean": 0.1627916000000056,
+        "min": 0.1419170000000065,
+        "max": 0.2121660000000105,
+        "failures": [],
+        "ok": true
+      },
+      "router": {
+        "name": "Orchestrator.route",
+        "trials": 5,
+        "warmup": 1,
+        "samples": [
+          0.0025829999999871234,
+          0.0030409999999960746,
+          0.0037080000000031532,
+          0.004750000000001364,
+          0.053334000000006654
+        ],
+        "median": 0.0037080000000031532,
+        "p95": 0.053334000000006654,
+        "mean": 0.013483199999998873,
+        "min": 0.0025829999999871234,
+        "max": 0.053334000000006654,
+        "failures": [],
+        "ok": true
+      },
+      "vector_search": {
+        "name": "vector.search[mobile]",
+        "trials": 5,
+        "warmup": 1,
+        "samples": [
+          0.018416000000001986,
+          0.019249999999999545,
+          0.03037499999999227,
+          0.03325000000000955,
+          0.04274999999999807
+        ],
+        "median": 0.03037499999999227,
+        "p95": 0.04274999999999807,
+        "mean": 0.028808200000000284,
+        "min": 0.018416000000001986,
+        "max": 0.04274999999999807,
+        "failures": [],
+        "ok": true
+      }
+    },
+    "tinkerer": {
+      "name": "tinkerer",
+      "label": "Raspberry Pi 4/5 or similar (<= 4GB RAM)",
+      "localModel": "LLAMA_3_2_1B_INST_Q4_0",
+      "delegateModel": "LLAMA_3_1_8B_INST_Q4_K_M",
+      "rag": {
+        "chunkSize": 300,
+        "topK": 4
+      },
+      "vector": {
+        "dim": 64,
+        "kind": "hash"
+      },
+      "p2p": {
+        "enabled": true,
+        "timeoutMs": 15000
+      },
+      "estimated": {
+        "profile": "tinkerer",
+        "localModel": "LLAMA_3_2_1B_INST_Q4_0",
+        "modelTier": "tiny",
+        "modelRamGb": 1.5,
+        "estimatedTokPerSecLow": 15,
+        "estimatedTokPerSecHigh": 25,
+        "source": "1B Q4_0 on Raspberry Pi 4 (4 GB RAM, single-threaded)"
+      },
+      "rag_search": {
+        "name": "rag.search[tinkerer]",
+        "trials": 5,
+        "warmup": 1,
+        "samples": [
+          0.08004199999999173,
+          0.09437499999999943,
+          0.09683300000000372,
+          0.09775000000000489,
+          0.10379199999999855
+        ],
+        "median": 0.09683300000000372,
+        "p95": 0.10379199999999855,
+        "mean": 0.09455839999999967,
+        "min": 0.08004199999999173,
+        "max": 0.10379199999999855,
+        "failures": [],
+        "ok": true
+      },
+      "router": {
+        "name": "Orchestrator.route",
+        "trials": 5,
+        "warmup": 1,
+        "samples": [
+          0.0025829999999871234,
+          0.0030409999999960746,
+          0.0037080000000031532,
+          0.004750000000001364,
+          0.053334000000006654
+        ],
+        "median": 0.0037080000000031532,
+        "p95": 0.053334000000006654,
+        "mean": 0.013483199999998873,
+        "min": 0.0025829999999871234,
+        "max": 0.053334000000006654,
+        "failures": [],
+        "ok": true
+      },
+      "vector_search": {
+        "name": "vector.search[tinkerer]",
+        "trials": 5,
+        "warmup": 1,
+        "samples": [
+          0.003250000000008413,
+          0.003333000000012021,
+          0.004499999999993065,
+          0.00462500000000432,
+          0.00549999999999784
+        ],
+        "median": 0.004499999999993065,
+        "p95": 0.00549999999999784,
+        "mean": 0.004241600000003132,
+        "min": 0.003250000000008413,
+        "max": 0.00549999999999784,
+        "failures": [],
+        "ok": true
+      }
+    },
+    "desktop": {
+      "name": "desktop",
+      "label": "laptop or workstation (>= 16GB RAM)",
+      "localModel": "LLAMA_3_1_8B_INST_Q4_K_M",
+      "delegateModel": "MEDPSY_4B_INST_Q4_K_M",
+      "rag": {
+        "chunkSize": 600,
+        "topK": 6
+      },
+      "vector": {
+        "dim": 256,
+        "kind": "hash"
+      },
+      "p2p": {
+        "enabled": false,
+        "timeoutMs": 5000
+      },
+      "estimated": {
+        "profile": "desktop",
+        "localModel": "LLAMA_3_1_8B_INST_Q4_K_M",
+        "modelTier": "medium",
+        "modelRamGb": 6,
+        "estimatedTokPerSecLow": 55,
+        "estimatedTokPerSecHigh": 90,
+        "source": "8B Q4_K_M on laptop/workstation CPU (≥16 GB RAM, 4+ cores)"
+      },
+      "rag_search": {
+        "name": "rag.search[desktop]",
+        "trials": 5,
+        "warmup": 1,
+        "samples": [
+          0.09675000000000011,
+          0.11137500000000955,
+          0.11537500000000023,
+          0.12479199999999935,
+          0.12708299999999895
+        ],
+        "median": 0.11537500000000023,
+        "p95": 0.12708299999999895,
+        "mean": 0.11507500000000163,
+        "min": 0.09675000000000011,
+        "max": 0.12708299999999895,
+        "failures": [],
+        "ok": true
+      },
+      "router": {
+        "name": "Orchestrator.route",
+        "trials": 5,
+        "warmup": 1,
+        "samples": [
+          0.0025829999999871234,
+          0.0030409999999960746,
+          0.0037080000000031532,
+          0.004750000000001364,
+          0.053334000000006654
+        ],
+        "median": 0.0037080000000031532,
+        "p95": 0.053334000000006654,
+        "mean": 0.013483199999998873,
+        "min": 0.0025829999999871234,
+        "max": 0.053334000000006654,
+        "failures": [],
+        "ok": true
+      },
+      "vector_search": {
+        "name": "vector.search[desktop]",
+        "trials": 5,
+        "warmup": 1,
+        "samples": [
+          0.013125000000002274,
+          0.01316700000000992,
+          0.015833000000000652,
+          0.01833299999999838,
+          0.0277499999999975
+        ],
+        "median": 0.015833000000000652,
+        "p95": 0.0277499999999975,
+        "mean": 0.017641600000001745,
+        "min": 0.013125000000002274,
+        "max": 0.0277499999999975,
+        "failures": [],
+        "ok": true
+      }
+    }
+  }
+}

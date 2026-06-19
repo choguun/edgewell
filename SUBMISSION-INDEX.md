@@ -13,6 +13,7 @@ git clone <repo> edgewell && cd edgewell
 corepack enable && corepack prepare pnpm@11.6.0 --activate
 pnpm install && pnpm build && pnpm test
 node dist/bin/edgewell.js showcase       # 33-line multi-agent + tool demo
+node dist/bin/edgewell.js psy            # 45-line Psy catalog + domain-aware routing demo
 node dist/bin/edgewell.js doctor         # 12-subsystem health check
 node dist/bin/edgewell.js command-list   # 135 registered subcommands
 node dist/bin/edgewell.js profiles list  # mobile / tinkerer / desktop
@@ -53,10 +54,11 @@ prints a deterministic 33-line transcript (see
 | `demo/peer-mesh-demo.log`               | ~87   | Synthetic trace of `PeerMesh.healthy/stream/...`  |
 | `demo/demo-script.md`                   | ~86   | 90-second video script + per-OS install snippets  |
 | `demo/showcase-test-run.txt`            | ~13   | TAP output of 5 showcase unit tests (5/5 ✔)      |
-| `artifacts/test-summary.txt`            | 129   | Tail of `pnpm test` (445/445 ✔)                  |
+| `artifacts/test-summary.txt`            | 129   | Tail of `pnpm test` (454/454 ✔)                  |
 | `artifacts/bench.json`                  | ~60   | `BenchmarkResult`-shaped honest measurements     |
 | `artifacts/hardware-proof.txt`          | 107   | Host probe + doctor + status + info + showcase    |
 | `artifacts/orchestrator-trace.txt`      | 266   | Annotated expected trace (3 questions × 2 paths)  |
+| `artifacts/psy-routing.log`             | 57    | `edgewell psy` transcript: catalog + 3 routing decisions + stub replies |
 | `artifacts/agents-manifest.json`        | 87    | 6 specialists + Orchestrator with tools           |
 | `artifacts/companion-smoke.txt`         | 47    | Companion boot + `/health` curl                    |
 | `artifacts/edgewell-help.txt`           | 65    | `edgewell help` output                            |
@@ -100,6 +102,7 @@ prints a deterministic 33-line transcript (see
 | `src/companion/`                        | HTTP server (HMAC bearer, CORS, OPTIONS, bundled web UI) |
 | `src/commands/showcase.ts`              | `edgewell showcase` — multi-agent + tool-calling + P2P demo |
 | `test/showcase-command.test.ts`         | 5 unit tests for the showcase command (5/5 ✔)       |
+| `test/psy-command.test.ts`              | 5 unit tests for the new `edgewell psy` command (5/5 ✔) |
 
 ---
 
@@ -123,7 +126,7 @@ prints a deterministic 33-line transcript (see
 ✓ pnpm install            (re-runnable from clean clone)
 ✓ pnpm build              (exit 0; tsc -p tsconfig.build.json)
 ✓ pnpm typecheck          (exit 0)
-✓ pnpm test               (445/445 pass, 0 fail, ~2.4 s)
+✓ pnpm test               (454/454 pass, 0 fail, ~2.5 s)
 ✓ node dist/bin/edgewell.js info              → version 3.0.1
 ✓ node dist/bin/edgewell.js doctor            → 11/12 OK (QVAC SDK stub is expected FAIL)
 ✓ node dist/bin/edgewell.js status            → operational

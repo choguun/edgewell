@@ -8,6 +8,16 @@ export type RouteAgent = "health" | "finance" | "lifestyle";
 export interface RouteResult {
   agent: RouteAgent;
   reason: string;
+  /**
+   * Optional domain hint emitted by the keyword-fallback path.
+   * `medical` is set when the question matches the v3.0.1
+   * mental-health regex (`/anxiety|therapy|panic|mental|psych|
+   * depress|insomnia|ptsd/i`); the `psy` showcase command and
+   * future per-call delegate policies read this to choose a
+   * Psy-family model via `pickModel({ domain: "medical" })`.
+   * `null` means no domain hint (lifestyle default).
+   */
+  domain: string | null;
 }
 
 export interface SpecialistAgent {
@@ -53,20 +63,24 @@ function parseRoute(text: string, question = ""): RouteResult {
     const obj = JSON.parse(candidate) as { agent?: unknown; reason?: unknown };
     const agent = String(obj.agent || "").toLowerCase() as RouteAgent;
     if (VALID_AGENTS.has(agent)) {
-      return { agent, reason: typeof obj.reason === "string" ? obj.reason : "" };
+      return { agent, reason: typeof obj.reason === "string" ? obj.reason : "", domain: null };
     }
   } catch {
     // fall through to keyword fallback
   }
   // Keyword fallback - check the original question, not the model's text.
   const low = (question || "").toLowerCase();
+  // v3.0.1: expanded mental-health regex that emits a `domain: "medical"`
+  // hint so the `psy` showcase command and future per-call delegate
+  // policies can resolve a Psy-family model via pickModel({domain:"medical"}).
+  const medicalHint = /anxiety|therapy|panic|mental|psych|depress|insomnia|ptsd/i;
   if (/(symptom|sleep|exercise|diet|medication|pain|stress|mood)/.test(low)) {
-    return { agent: "health", reason: "keyword match" };
+    return { agent: "health", reason: "keyword match", domain: medicalHint.test(low) ? "medical" : null };
   }
   if (/(money|budget|expense|saving|debt|income|price|thb|usd|baht)/.test(low)) {
-    return { agent: "finance", reason: "keyword match" };
+    return { agent: "finance", reason: "keyword match", domain: null };
   }
-  return { agent: "lifestyle", reason: "default" };
+  return { agent: "lifestyle", reason: "default", domain: null };
 }
 
 export class Orchestrator {

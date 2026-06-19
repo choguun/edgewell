@@ -1,0 +1,98 @@
+{"version":2,"width":100,"height":30,"timestamp":1718700000,"env":{"SHELL":"/bin/zsh","TERM":"xterm-256color"}}
+{"time":0.05,"type":"o","data":"\u001b[2J\u001b[H"}
+{"time":0.1,"type":"o","data":"\u001b[32m$\u001b[0m "}
+{"time":0.15,"type":"o","data":"n"}
+{"time":0.175,"type":"o","data":"o"}
+{"time":0.2,"type":"o","data":"d"}
+{"time":0.225,"type":"o","data":"e"}
+{"time":0.25,"type":"o","data":" "}
+{"time":0.275,"type":"o","data":"b"}
+{"time":0.3,"type":"o","data":"i"}
+{"time":0.325,"type":"o","data":"n"}
+{"time":0.35,"type":"o","data":"/"}
+{"time":0.375,"type":"o","data":"e"}
+{"time":0.4,"type":"o","data":"d"}
+{"time":0.425,"type":"o","data":"g"}
+{"time":0.45,"type":"o","data":"e"}
+{"time":0.475,"type":"o","data":"w"}
+{"time":0.5,"type":"o","data":"e"}
+{"time":0.525,"type":"o","data":"l"}
+{"time":0.55,"type":"o","data":"l"}
+{"time":0.575,"type":"o","data":"."}
+{"time":0.6,"type":"o","data":"j"}
+{"time":0.625,"type":"o","data":"s"}
+{"time":0.65,"type":"o","data":" "}
+{"time":0.675,"type":"o","data":"s"}
+{"time":0.7,"type":"o","data":"h"}
+{"time":0.725,"type":"o","data":"o"}
+{"time":0.75,"type":"o","data":"w"}
+{"time":0.775,"type":"o","data":"c"}
+{"time":0.8,"type":"o","data":"a"}
+{"time":0.825,"type":"o","data":"s"}
+{"time":0.85,"type":"o","data":"e"}
+{"time":0.875,"type":"o","data":"\r\n"}
+{"time":0.925,"type":"o","data":"──────────────────────────────"}
+{"time":2.259,"type":"o","data":"──────────────────────────────\r\n"}
+{"time":3.594,"type":"o","data":" EdgeWell v3.0.1 — multi-agent"}
+{"time":4.928,"type":"o","data":" + tool-calling + P2P showcase \r\n"}
+{"time":6.263,"type":"o","data":"──────────────────────────────"}
+{"time":7.597,"type":"o","data":"──────────────────────────────\r\n"}
+{"time":8.932,"type":"o","data":"HACKATHON SHOWCASE STUB — replace with"}
+{"time":10.266,"type":"o","data":" real QVAC inference when SDK is wired\r\n"}
+{"time":11.601,"type":"o","data":"Three questions, three specialis"}
+{"time":12.935,"type":"o","data":"ts, two tool calls, one fallback.\r\n"}
+{"time":14.27,"type":"o","data":"\r\n"}
+{"time":16.939,"type":"o","data":"── Q1 / health ─────────────"}
+{"time":18.273,"type":"o","data":"────────────────────────────\r\n"}
+{"time":19.608,"type":"o","data":"question: why am I"}
+{"time":20.942,"type":"o","data":" so tired this week\r\n"}
+{"time":22.277,"type":"o","data":"router:  agent=health\r\n"}
+{"time":24.945,"type":"o","data":"raw:     Sounds like a fatigue pattern — try a con"}
+{"time":25.88,"type":"o","data":"sistent wake time and a 20-minute morning walk. I'"}
+{"time":26.814,"type":"o","data":"ll cross-check your last 7 days of journal entrie…\r\n"}
+{"time":27.614,"type":"o","data":"tool-call: name=search_kb params={\"query\""}
+{"time":28.949,"type":"o","data":":\"sleep tired fatigue last week\",\"topK\":3}\r\n"}
+{"time":30.283,"type":"o","data":"tool-result: {\"hits\":[{\"text\":\"journal: slept poorly on 2026-06-12, woke at 03:40 (query=sleep tired fatigue last week)\",\"source\":\"journal.js"}
+{"time":31.217,"type":"o","data":"onl\",\"score\":0.91},{\"text\":\"journal: energy crash after lunch, mood=low (query=sleep tired fatigue last week)\",\"source\":\"journal.jsonl\",\"scor"}
+{"time":32.152,"type":"o","data":"e\":0.74},{\"text\":\"notes: caffeine cutoff moved from 14:00 to 11:00 (query=sleep tired fatigue last week)\",\"source\":\"notes.md\",\"score\":0.61}]}\r\n"}
+{"time":32.952,"type":"o","data":"agent:    Three factors usually drive mid-week fatigue: (1) inconsistent wake time, (2) post-lun"}
+{"time":33.886,"type":"o","data":"ch carb crash, (3) accumulated sleep debt from Sunday/Monday. Top fix: same wake time 7 days/wee"}
+{"time":34.821,"type":"o","data":"k + 20 min morning sunlight. I searched your last 7 days of journal entries and saw the pattern.\r\n"}
+{"time":35.621,"type":"o","data":"\r\n"}
+{"time":38.29,"type":"o","data":"── Q2 / finance ────────────"}
+{"time":39.625,"type":"o","data":"─────────────────────────────\r\n"}
+{"time":40.959,"type":"o","data":"question: how much did I "}
+{"time":42.294,"type":"o","data":"spend on coffee this month\r\n"}
+{"time":43.628,"type":"o","data":"router:  agent=finance\r\n"}
+{"time":46.297,"type":"o","data":"raw:     Quick math for you: 30 workdays × 4.5 USD"}
+{"time":47.231,"type":"o","data":"/day = 135 USD/month on coffee.  <tool name=\"calcu"}
+{"time":48.165,"type":"o","data":"lator\">{\"expression\": \"30 * 4.5\"}</tool>  If you …\r\n"}
+{"time":48.966,"type":"o","data":"tool-call: name=calculator pa"}
+{"time":50.3,"type":"o","data":"rams={\"expression\":\"30 * 4.5\"}\r\n"}
+{"time":51.635,"type":"o","data":"tool-result: {\"result\":135}\r\n"}
+{"time":54.304,"type":"o","data":"agent:    Quick math: 30 workdays × 4"}
+{"time":55.638,"type":"o","data":".5 USD/day = 135 USD/month on coffee.\r\n"}
+{"time":56.973,"type":"o","data":"\r\n"}
+{"time":59.642,"type":"o","data":"── Q3 / lifestyle ───────────"}
+{"time":60.976,"type":"o","data":"──────────────────────────────\r\n"}
+{"time":62.311,"type":"o","data":"question: help me bu"}
+{"time":63.645,"type":"o","data":"ild a morning routine\r\n"}
+{"time":64.98,"type":"o","data":"router:  agent=lifestyle\r\n"}
+{"time":67.648,"type":"o","data":"raw:     Try this morning routine: 06:30 wak"}
+{"time":68.583,"type":"o","data":"e → 5 min stretch → 10 min journal → 20 min "}
+{"time":69.517,"type":"o","data":"walk. Keep it under 40 minutes so it sticks.…\r\n"}
+{"time":70.317,"type":"o","data":"agent:    Try this morning routine: 06:30 wa"}
+{"time":71.252,"type":"o","data":"ke → 5 min stretch → 10 min journal → 20 min"}
+{"time":72.186,"type":"o","data":" walk. Keep it under 40 minutes so it sticks.\r\n"}
+{"time":72.986,"type":"o","data":"\r\n"}
+{"time":75.655,"type":"o","data":"[p2p] peer 127.0.0.1:8787 unreach"}
+{"time":76.99,"type":"o","data":"able — falling back to local model\r\n"}
+{"time":78.324,"type":"o","data":"       local-model: LLAMA_3_2_1B_I"}
+{"time":79.659,"type":"o","data":"NST_Q4_0 (mobile/tinkerer profile)\r\n"}
+{"time":80.993,"type":"o","data":"       delegate-on: delegation di"}
+{"time":82.328,"type":"o","data":"sabled by profile; using local 1B\r\n"}
+{"time":83.662,"type":"o","data":"\r\n"}
+{"time":86.331,"type":"o","data":"summary: agents=health,finance,l"}
+{"time":87.265,"type":"o","data":"ifestyle tools=search_kb,calcula"}
+{"time":88.199,"type":"o","data":"tor rag-hits=3 p2p-fallback=fired\r\n"}
+{"time":90,"type":"o","data":"\u001b[?25h"}

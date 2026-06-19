@@ -64,8 +64,10 @@ import { watchCommand } from "./commands/watch.js";
 import { compareCommand } from "./commands/compare.js";
 import { commandListCommand } from "./commands/command-list.js";
 import { showcaseCommand } from "./commands/showcase.js";
+import { psyCommand } from "./commands/psy.js";
 import { importCommand as _dupImport } from "./commands/import.js";
 import { benchCompareCommand } from "./commands/bench-compare.js";
+import { benchProfileCommand } from "./commands/bench-profile.js";
 import { profileImportCommand } from "./commands/profile-import.js";
 import { promptCommand } from "./commands/prompt.js";
 import { goalsCommand } from "./commands/goals.js";
@@ -236,6 +238,7 @@ const MAP_RAW: RawMap = {
   eval: evalCommand,
   bench: benchCommand,
   "bench-compare": benchCompareCommand,
+  "bench-profile": benchProfileCommand,
   snapshot: snapshotCommand,
   companion: companionCommand,
   profiles: profilesCommand,
@@ -282,6 +285,7 @@ const MAP_RAW: RawMap = {
   "command-list": commandListCommand,
   showcase: showcaseCommand,
   prompt: promptCommand,
+  psy: psyCommand,
   goals: goalsCommand,
   "journal-rag-top": journalRagTopCommand,
   "journal-rag-count": journalRagCountCommand,

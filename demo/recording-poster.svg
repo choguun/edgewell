@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="400" height="300" role="img" aria-label="EdgeWell v3.0.1 — 90-second demo poster">
+  <defs>
+    <linearGradient id="bg-grad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0f1115"/>
+      <stop offset="100%" stop-color="#070809"/>
+    </linearGradient>
+    <linearGradient id="panel-grad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1c2029"/>
+      <stop offset="100%" stop-color="#161a22"/>
+    </linearGradient>
+    <linearGradient id="play-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#86efac"/>
+      <stop offset="100%" stop-color="#7dd3fc"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <style>
+      .title { fill: #e7ecf2; font: 600 17px/1 -apple-system, "Segoe UI", system-ui, sans-serif; letter-spacing: 0.01em; }
+      .sub   { fill: #8a93a4; font: 12px/1 -apple-system, "Segoe UI", system-ui, sans-serif; }
+      .term  { fill: #e7ecf2; font: 12px/16px "SF Mono", Menlo, Consolas, "Courier New", monospace; }
+      .prompt{ fill: #86efac; font: 12px/16px "SF Mono", Menlo, Consolas, "Courier New", monospace; font-weight: 600; }
+      .accent{ fill: #7dd3fc; }
+      .badge { fill: #86efac; font: 600 9px/1 "SF Mono", Menlo, monospace; letter-spacing: 0.08em; }
+      .tri   { fill: url(#play-grad); }
+      .play-label { fill: #e7ecf2; font: 600 11px/1 -apple-system, "Segoe UI", system-ui, sans-serif; letter-spacing: 0.05em; }
+      .corner { fill: #8a93a4; font: 9px/1 "SF Mono", Menlo, monospace; }
+    </style>
+  </defs>
+
+  <!-- background -->
+  <rect width="400" height="300" fill="url(#bg-grad)"/>
+
+  <!-- subtle scanlines for terminal feel -->
+  <g opacity="0.04">
+    <rect y="0"   width="400" height="1" fill="#7dd3fc"/>
+    <rect y="40"  width="400" height="1" fill="#7dd3fc"/>
+    <rect y="80"  width="400" height="1" fill="#7dd3fc"/>
+    <rect y="120" width="400" height="1" fill="#7dd3fc"/>
+    <rect y="160" width="400" height="1" fill="#7dd3fc"/>
+    <rect y="200" width="400" height="1" fill="#7dd3fc"/>
+    <rect y="240" width="400" height="1" fill="#7dd3fc"/>
+    <rect y="280" width="400" height="1" fill="#7dd3fc"/>
+  </g>
+
+  <!-- main panel -->
+  <rect x="14" y="14" width="372" height="272" rx="10" fill="url(#panel-grad)" stroke="#232733" stroke-width="1"/>
+
+  <!-- title bar -->
+  <rect x="14" y="14" width="372" height="34" rx="10" fill="#1f242e"/>
+  <rect x="14" y="38" width="372" height="10" fill="#1f242e"/>
+  <line x1="14" y1="48" x2="386" y2="48" stroke="#232733" stroke-width="1"/>
+
+  <!-- traffic-light dots -->
+  <circle cx="28"  cy="31" r="4.5" fill="#fca5a5"/>
+  <circle cx="44"  cy="31" r="4.5" fill="#fbbf24"/>
+  <circle cx="60"  cy="31" r="4.5" fill="#86efac"/>
+
+  <!-- title text + version badge -->
+  <text class="title" x="84" y="35">EdgeWell v3.0.1 — 90s demo</text>
+  <text class="sub"   x="232" y="35" text-anchor="start" opacity="0.7">· asciinema cast</text>
+
+  <!-- terminal inner window -->
+  <rect x="22" y="58" width="356" height="156" rx="6" fill="#0a0c10" stroke="#232733" stroke-width="1"/>
+  <text class="corner" x="30" y="71">100×30 · 97 frames · local-first</text>
+
+  <!-- first 3 lines of the showcase output -->
+  <!-- line 1: title banner (the boxed header) -->
+  <text class="term" x="30" y="92">── EdgeWell v3.0.1 — multi-agent + tool-calling</text>
+  <text class="term" x="30" y="108">── HACKATHON SHOWCASE STUB — wire real QVAC</text>
+  <!-- line 2: HACKATHON SHOWCASE STUB line in accent -->
+  <text class="term accent" x="30" y="128">HACKATHON SHOWCASE STUB</text>
+  <text class="term" x="30" y="144">Three questions · three specialists · two tool calls.</text>
+  <!-- line 3: first question from Q1 / health -->
+  <text class="term" x="30" y="166" opacity="0.85">── Q1 / health ────────────────────</text>
+  <text class="prompt" x="30" y="186">? why am I so tired this week</text>
+  <text class="term" x="30" y="202" opacity="0.6">→ router: health · tool: search_kb</text>
+
+  <!-- bottom area: play button + caption -->
+  <g transform="translate(0, 230)">
+    <!-- play pill background -->
+    <rect x="130" y="0" width="140" height="40" rx="20" fill="#181b22" stroke="#7dd3fc" stroke-width="1.2" filter="url(#glow)"/>
+    <!-- play triangle (use a path so we can add rounded corners) -->
+    <path class="tri" d="M 154 11 L 154 29 L 174 20 Z"/>
+    <text class="play-label" x="186" y="25">play the 90s</text>
+  </g>
+
+  <!-- bottom-left brand mark -->
+  <g transform="translate(28, 256)">
+    <circle cx="6" cy="6" r="6" fill="#7dd3fc" opacity="0.85"/>
+    <circle cx="6" cy="6" r="3" fill="#0f1115"/>
+    <text class="sub" x="20" y="10">QVAC SDK · local-first · no telemetry</text>
+  </g>
+
+  <!-- bottom-right version stamp -->
+  <text class="corner" x="372" y="280" text-anchor="end">v3.0.1 · rec. 2026-06-18 · demo/recording.cast</text>
+
+  <!-- version badge top-right -->
+  <g transform="translate(320, 22)">
+    <rect x="0" y="0" width="56" height="16" rx="3" fill="rgba(134, 238, 172, 0.12)" stroke="#86efac" stroke-width="0.8"/>
+    <text class="badge" x="28" y="11" text-anchor="middle">v2 CAST</text>
+  </g>
+</svg>

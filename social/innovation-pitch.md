@@ -87,6 +87,26 @@ peer is reachable.
    RAM), and `desktop` (≥16 GB RAM, bigger local model). A user
    runs `edgewell profiles apply mobile` and the applied profile
    is persisted to `~/.edgewell/state.json` — wired in v3.0.1.
+8. **Cross-profile performance benchmarks.** `edgewell bench-profile`
+   measures the same three operations — `rag.search`,
+   `Orchestrator.route`, and `vector.search` — across `mobile` /
+   `tinkerer` / `desktop` profiles in one run, with an ASCII table
+   summarising the per-profile medians and the `expected tok/s`
+   for the profile's local model (1B Q4_0 → 25-40 / 15-25 tok/s,
+   8B Q4_K_M → 55-90 tok/s). The artifact is captured in
+   `artifacts/bench-profile.json` and `artifacts/bench-profile.txt`.
+(h) **Psy-family model coverage**: 4 Psy models (MEDPSY_1_7B,
+    MEDPSY_4B, and the INST variants) registered and selected by
+    domain-aware routing, with a dedicated `edgewell psy` command
+    to make the routing decisions visible to judges. The
+    orchestrator's keyword router (`src/agents/orchestrator.ts`)
+    now tags mental-health questions with `domain: "medical"`
+    (added in v3.0.1), and the `psy` command lists the catalog,
+    classifies three sample questions through the expanded
+    `/anxiety|therapy|panic|mental|psych|depress|insomnia|ptsd/i`
+    regex, and prints the resolved Psy model + a canned stub
+    reply per routed question. Live transcript in
+    `artifacts/psy-routing.log` (45 lines).
 
 ## Concrete numbers (with file references)
 
