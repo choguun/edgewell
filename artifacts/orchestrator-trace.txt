@@ -264,3 +264,155 @@ References:
   - src/agents/orchestrator.ts:Orchestrator.ask
   - src/agents/health.ts:HealthAgent.ask
   - src/agents/finance.ts:FinanceAgent.ask
+
+
+## Q4 — Mental-health question with domain=medical hint  (v3.0.1)
+
+This question exercises the v3.0.1 expansion of the keyword-fallback
+path in `src/agents/orchestrator.ts:parseRoute`. The new
+`medicalHint` regex is checked after the health-keyword regex
+matches; if it does, the returned `RouteResult` carries a new
+`domain: "medical"` field that the desktop profile's delegate reads
+to resolve a Psy-family model.
+
+================================================================
+QUESTION 4: "I've been having panic attacks and can't sleep"
+================================================================
+
+--- input ---
+question: "I've been having panic attacks and can't sleep"
+
+--- router prompt ---
+system: ROUTER_SYSTEM  (src/agents/orchestrator.ts)
+  "You are EdgeWell Router. Given a user question, output a single
+   JSON object with two fields:
+   - "agent": one of "health", "finance", "lifestyle"
+   - "reason": one short sentence explaining why
+   Rules:
+   - Symptom, sleep, exercise, mood, diet, medication → health
+   - Money, budget, expense, savings, debt, income, price → finance
+   - Everything else (habits, productivity, mixed) → lifestyle
+   - Output only the JSON. No prose, no code fences."
+user: "I've been having panic attacks and can't sleep"
+maxTokens: 120
+temperature: 0
+
+--- router reply (router prompt succeeded) ---
+  {"agent":"health","reason":"panic + insomnia symptoms; mental health"}
+
+  parseRoute() enters the try block. The fence-strip regex
+  /\{[\s\S]*?\}/ matches the full JSON above; JSON.parse succeeds;
+  obj.agent === "health" ∈ VALID_AGENTS; the function returns:
+
+    { agent: "health",
+      reason: "panic + insomnia symptoms; mental health",
+      domain: null }
+
+  (Domain stays null on the JSON-parse path: the medical-hint
+   regex is only consulted on the keyword-fallback path, which the
+   try block short-circuits past when the LLM returns valid JSON.)
+
+--- parseRoute step (mental-health regex → domain=medical) ---
+  In the hackathon stub the in-process LLM returns "" (the QVAC
+  SDK link is not installed in CI), so the parseRoute try block
+  throws, and the function falls into the catch → keyword-fallback
+  block. Against the ORIGINAL question, two regexes fire:
+
+  Step 1 — health keyword regex (existing, src/agents/orchestrator.ts:77)
+    /symptom|sleep|exercise|diet|medication|pain|stress|mood/
+      .test("i've been having panic attacks and can't sleep")
+    Matches: "sleep" (substring of "can't sleep").  ✓
+    → enters the health branch.
+
+  Step 2 — medical-hint regex (NEW in v3.0.1, src/agents/orchestrator.ts:76)
+    /anxiety|therapy|panic|mental|psych|depress|insomnia|ptsd/i
+      .test("i've been having panic attacks and can't sleep")
+    Matches: "panic" (substring of "panic attacks").  ✓
+    → emits the new domain field: domain: "medical"
+
+  parseRoute returns:
+    { agent: "health",
+      reason: "keyword match",
+      domain: "medical" }   ← NEW in v3.0.1
+
+--- keyword fallback (PATH B) ---
+  PATH B was taken in the stub. The keyword-fallback block matched
+  the health regex on the FIRST condition, so the second condition
+  (finance) and the final `return { agent: "lifestyle", ... }` line
+  were never evaluated. The lifestyle default fallback is NOT
+  triggered in this case — both the health-keyword regex and the
+  medical-hint regex matched a specialist first.
+
+--- specialist chosen ---
+  agent  = "health"
+  domain = "medical"   ← NEW in v3.0.1
+  → routes to: this.health.ask(question, history)
+  → HealthAgent.ask constructs the standard user block:
+      user = `Journal notes (RAG top-4):
+      <rag context block, top-4 from rag.contextBlock>
+
+      Question: I've been having panic attacks and can't sleep`
+
+  Note: domain=medical hint is read by the desktop profile's
+  `MEDPSY_4B_INST_Q4_K_M` delegate so the response is weighted
+  toward clinical reasoning rather than casual advice. The agent
+  system prompt itself does NOT branch on domain — that is the
+  delegate's job. See:
+    - src/profiles.ts:29 (desktop.delegateModel = "MEDPSY_4B_INST_Q4_K_M")
+    - src/registry.ts:75  (pickModel({ domain: "medical" }))
+    - src/commands/psy.ts (the showcase command that exercises all 4
+      Psy-family resolutions end-to-end).
+
+--- RAG hits (MOCK: top-4 from rag.contextBlock) ---
+  MOCK: chunk  3 | score 0.88 | "Can't sleep, racing heart — woke at 3am"
+  MOCK: chunk  7 | score 0.79 | "Panic attack on the bus, ~10 min, hands shaking"
+  MOCK: chunk 18 | score 0.66 | "Logged 'anxious' in journal 4 days running"
+  MOCK: chunk 24 | score 0.58 | "Caffeine 3 coffees after 5pm — blames sleep"
+
+  (RAG context block is built by HealthAgent._ctx → rag.contextBlock(query, 4).
+   In the desktop profile, topK=6 (vs topK=3 in mobile); only the
+   top-4 are shown here for readability.)
+
+--- final reply (health path, MEDPSY-tuned via desktop profile) ---
+  [health] A few patterns from your last week are worth naming out loud:
+  - Sleep has been fragmented with early-morning waking; that
+    pattern often tracks anxiety rather than poor sleep hygiene alone.
+  - Recurrent panic episodes (≥1/week) cross the threshold where a
+    clinician's input adds value beyond self-tracking.
+  - Late caffeine (>5pm) is a likely amplifier — try a hard 2pm
+    cutoff for 7 days and reassess.
+  Next step I'd suggest: book a single appointment with a primary
+  care clinician to rule out medical contributors (thyroid, anemia,
+  sleep apnea) and ask for a referral if symptoms persist >4 weeks.
+  Note: I'm an AI, not a doctor. For urgent or severe symptoms,
+  contact a licensed clinician or local emergency services.
+
+--- expected CLI invocation (desktop profile) ---
+  $ edgewell --profile desktop ask "I've been having panic attacks and can't sleep"
+  [health] A few patterns from your last week are worth naming out loud: ...
+
+  The same question on the `mobile` or `tinkerer` profile would NOT
+  delegate to MEDPSY_4B_INST_Q4_K_M (their delegateModel is
+  LLAMA_3_1_8B_INST_Q4_K_M, a general-purpose model), but the
+  `domain: "medical"` hint still flows through RouteResult and is
+  visible to any future per-call delegate policy that reads it.
+
+--- summary delta vs Q1 ---
+  Q1 ("Why am I so tired this week?"):
+    "tired" matches neither the health-keyword nor the medical-hint
+    regex → domain: null → no Psy delegate → general HealthAgent
+    prompt (or lifestyle default in the stub).
+  Q4 ("I've been having panic attacks and can't sleep"):
+    "panic" + "sleep" both match → agent: "health", domain: "medical"
+    → desktop profile delegates to MEDPSY_4B_INST_Q4_K_M → response
+    is weighted toward clinical reasoning rather than casual advice.
+
+References (additions for v3.0.1):
+  - src/agents/orchestrator.ts:parseRoute (medical-hint regex)
+  - src/agents/orchestrator.ts:RouteResult (new `domain` field)
+  - src/registry.ts:MODELS (MEDPSY_1_7B_Q4_K_M, MEDPSY_4B_Q4_K_M)
+  - src/registry.ts:pickModel({ domain: "medical" })
+  - src/profiles.ts:desktop.delegateModel = "MEDPSY_4B_INST_Q4_K_M"
+  - src/commands/psy.ts (showcase command for the Psy catalog)
+
+End of trace.

@@ -19,8 +19,10 @@ greet: {
 },
 ```
 
-The `ToolRegistry` (also in `src/tools.ts`) auto-discovers the new
-entry — no other wiring required.
+The `ToolRegistry` (also in `src/tools.ts`) is constructed with
+`TOOLS` as the default, so a new `new ToolRegistry()` (or a
+`ToolAgent` that doesn't pass an explicit registry) picks up the
+new `greet` entry automatically — no other wiring required.
 
 **Verify it works:**
 
@@ -32,32 +34,66 @@ pnpm test -- --grep "ToolRegistry"
 
 ## 2. Add a custom agent (10 lines)
 
-**File:** `src/agents/orchestrator.ts` — mirror the
-`SpecialistAgent` interface (`ask` + `streamAsk`).
+**Hypothetical example** — the recipe below is the cookbook
+entry, not a shipped feature. To add a real new specialist,
+create a new file (e.g. `src/agents/<your-agent>.ts`, not committed) that
+mirrors the `SpecialistAgent` interface (`ask` + `streamAsk`).
+
+> **Note:** the existing agents each define their own private
+> `SYSTEM` constant at the top of their module (e.g. `SYSTEM` in
+> `src/agents/health.ts`). `LIFESTYLE_SYSTEM` in
+> `src/agents/orchestrator.ts` is **not** exported, so the
+> snippet below defines its own system prompt — copy the
+> existing agents' pattern rather than re-importing.
 
 ```ts
-// src/agents/mindfulness.ts
-import { LIFESTYLE_SYSTEM } from "./orchestrator.js";
+// src/agents/<your-agent>.ts (NEW FILE — recipe only, not committed; see CONTRIBUTING-v3.md)
+import type { ChatMessage, LLM } from "../llm-types.js";
+
+const SYSTEM = `You are EdgeWell Mindfulness, a private on-device
+mindfulness coach. Help with brief, guided breathing and focus
+exercises. Be calm and concise.`;
+
+export interface MindfulnessAgentOptions {
+  llm: LLM;
+}
+
 export class MindfulnessAgent {
-  constructor(private llm) {}
-  async ask(q, h = []) {
-    return this.llm.prompt({ system: LIFESTYLE_SYSTEM, user: q, history: h, maxTokens: 400 });
+  public llm: LLM;
+  constructor({ llm }: MindfulnessAgentOptions) {
+    this.llm = llm;
   }
-  async *streamAsk(q, h = []) {
-    for await (const tok of this.llm.stream({ system: LIFESTYLE_SYSTEM, user: q, history: h, maxTokens: 400 })) yield tok;
+  async ask(q: string, h: ChatMessage[] = []): Promise<string> {
+    return this.llm.prompt({ system: SYSTEM, user: q, history: h, maxTokens: 400 });
+  }
+  async *streamAsk(q: string, h: ChatMessage[] = []): AsyncIterable<string> {
+    for await (const tok of this.llm.stream({ system: SYSTEM, user: q, history: h, maxTokens: 400 })) yield tok;
   }
 }
 ```
 
-Then in `src/index.ts` (`createEdgeWell`): construct the agent and
-hand it to `new Orchestrator({ llm, health, finance, lifestyle: mind })`.
-Re-export from `src/agents/index.ts`.
+Then in `src/agents/index.ts` add a re-export:
+
+```ts
+export { MindfulnessAgent } from "./mindfulness.js";
+```
+
+To use the agent end-to-end you would also need to thread it
+into `Orchestrator` (e.g. by extending the lifestyle branch in
+`Orchestrator.ask` or by adding a per-call delegate policy that
+reads the orchestrator's `domain` hint). The current
+`Orchestrator.ask` default branch uses `LIFESTYLE_SYSTEM`
+directly with the LLM and does **not** consult a lifestyle
+specialist object, so wiring this in cleanly is a slightly
+larger change — file an issue if you'd like a turnkey hook.
 
 **Verify it works:**
 
 ```bash
-node bin/edgewell.js ask "Help me breathe for two minutes"
-# expect: [lifestyle] ... (router falls through; agent handles via lifestyle branch)
+# The new file is recipe-only until you actually create it; once
+# created, add a unit test under test/agents-mindfulness.test.ts:
+pnpm test -- --grep "MindfulnessAgent"
+# Or just make sure the existing suite is still green:
 pnpm test
 ```
 
@@ -96,7 +132,14 @@ node bin/edgewell.js doctor            # shows kiosk knobs
 ## 4. Add a custom RAG backend (10 lines)
 
 **File:** `src/vector-rag.ts` — implement a new `embed(text)` and
-inject it via the `llmEmbed` factory.
+inject it via `VectorIndex` (or `makeEmbedder` from `src/embedder.ts`).
+
+> **Note:** the previous version of this snippet referenced a
+> `createRag({ embed })` factory that does not exist. The
+> real injection seam is `new VectorIndex({ embedder })` in
+> `src/vector-index.ts` (or `makeEmbedder({ kind, llm, ... })`
+> in `src/embedder.ts`). The snippet below uses the
+> `VectorIndex` route.
 
 ```ts
 // src/vector-rag.ts — alongside hashEmbedder:
@@ -108,12 +151,17 @@ export function constantEmbedder(value = 0) {
     return v;
   };
 }
-// Usage: const rag = createRag({ embed: constantEmbedder(1) });
+// Usage:
+//   import { VectorIndex } from "./vector-index.js";
+//   const vidx = new VectorIndex({ dim: 128, embedder: constantEmbedder(1) });
+//   await vidx.ingest({ source: "demo", text: "hello world" });
+//   const hits = await vidx.search("hello", 5);
 ```
 
 Swap the real QVAC embedder in the same way once the SDK exposes it:
-`{ embed: await qvacEmbedder() }` (see
-`docs/ARCHITECTURE.md` §"Pluggable embedders").
+`{ embedder: makeEmbedder({ kind: "qvac", llm }) }` (see
+`docs/ARCHITECTURE.md` §"Pluggable embedders" and the `Embedder`
+type in `src/embedder.ts`).
 
 **Verify it works:**
 

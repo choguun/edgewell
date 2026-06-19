@@ -79,6 +79,41 @@ v3.0.1 is the QVAC hackathon cut. Everything reviewers need to
 evaluate the project is committed in this repo; no live SDK is
 required to see the trace.
 
+### New in this revision
+
+The post-review revision of v3.0.1 adds a Psy-family model showcase,
+a cross-profile micro-benchmark, a self-contained demo recording,
+and a fresh batch of community-voting + social assets. Nothing in
+the existing v3.0.1 surface is broken — the new commands sit
+alongside the existing CLI.
+
+- **`edgewell psy`** — Psy-family model catalog + domain-aware
+  routing demo. Prints the 3 Psy models registered across
+  `src/registry.ts` and `src/profiles.ts`, classifies 3 sample
+  mental-health questions through the orchestrator's
+  `domain=medical` hint, and emits canned stub replies per
+  picked model. Covered by 5 unit tests under
+  `test/psy-command.test.ts`.
+- **`edgewell bench-profile`** — cross-profile performance table
+  that runs `rag.search`, `Orchestrator.route`, and `vector.search`
+  against each of `mobile` / `tinkerer` / `desktop` and prints
+  medians + expected tok/s. Supports `--json` for the artifact
+  builder. Covered by 4 unit tests. Transcript at
+  `artifacts/bench-profile.txt`, machine-readable form at
+  `artifacts/bench-profile.json`.
+- **`demo/recording.html`** — self-contained 90-second terminal
+  playback. The asciinema v2 cast (`demo/recording.cast`) is
+  embedded inline as a JS array literal; no external CDN, no build
+  step. Open the file in any browser to play it. A 400×300 SVG
+  poster (`demo/recording-poster.svg`) ships alongside.
+- **`social/vote-card.svg`** — community voting share card
+  (800×400, self-contained, no external fonts). Markdown fallback
+  at `social/VOTING-CARD.md`.
+- **`social/JUDGES-ONE-PAGER.md`** — printable one-page summary
+  for hackathon judges: pitch, "what to look at first", a
+  "what's new in v3.0.1" line, key links, and a fixed-width
+  footer with the URL.
+
 - **Project write-up**: [`HACKATHON-SUBMISSION.md`](./HACKATHON-SUBMISSION.md)
   is the canonical submission document — track, SDK, run
   instructions, evidence list, limitations, and roadmap.

@@ -6,7 +6,7 @@
 - **Capabilities** — hybrid TF-IDF + vector RAG with RRF and a bigram re-ranker, multimodal ingest for image / audio / sensor, HMAC-token-gated companion server (`src/hybrid-search.ts`, `src/multimodal/`, `src/companion/`).
 - **Model coverage** — `src/registry.ts` ships Llama 1B / 3B / 8B / 70B and the Psy family (`MEDPSY_1_7B`, `MEDPSY_4B`); the `desktop` profile delegates to `MEDPSY_4B_INST_Q4_K_M`.
 ## How to verify (≤ 5 minutes total)
-1. **Clone & test** — `git clone <repo> edgewell && cd edgewell && pnpm install && pnpm test` (expect 440/440 green).
+1. **Clone & test** — `git clone <repo> edgewell && cd edgewell && pnpm install && pnpm test` (expect 445/445 green).
 2. **Run showcase** — `node bin/edgewell.js showcase` (3 questions, 3 specialists, all offline).
 3. **Inspect bench** — `node bin/edgewell.js bench` (writes `artifacts/bench.json` with profile × model × tokens/s).
 ## Cast your vote

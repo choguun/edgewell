@@ -90,6 +90,8 @@ switch (agent) {
 `streamAsk` is the streaming variant, used by `edgewell chat` and
 the companion's `POST /chat`.
 
+The orchestrator's `parseRoute` now also emits a `domain: string | null` field on `RouteResult`. The default branch is `null`. Mental-health keywords (`anxiety|therapy|panic|mental|psych|depress|insomnia|ptsd`) emit `domain: "medical"`, which the desktop profile's `MEDPSY_4B_INST_Q4_K_M` Psy-family model uses to weight its response. See `edgewell psy` for the demo.
+
 ## Prompts
 
 Every agent owns a single `SYSTEM` constant at the top of its

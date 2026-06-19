@@ -13,7 +13,7 @@ using QVAC SDK models. One TypeScript codebase ships as a CLI, a
 peer-to-peer server, and a mobile-friendly web companion behind an
 HMAC token gate. v3.0.1 closes 20 of 24 UAT findings, ships 6
 specialist agents (Health, Finance, Sleep, Nutrition, Hydration,
-Activity) behind one Orchestrator, ~190 CLI subcommands,
+Activity) behind one Orchestrator, 140 CLI subcommands,
 hybrid lexical+vector RAG with a bigram re-ranker, and a
 multi-peer mesh that consensus-votes answers when more than one
 peer is reachable.
@@ -112,9 +112,10 @@ peer is reachable.
 
 - **7 agents total** (Orchestrator + 6 specialists) exported by
   `src/agents/index.ts`.
-- **~190 CLI subcommands** wired in `src/dispatch.ts` (the
-  `MAP` table; `README.md` rounds this to ~140, the source
-  imports ~193 distinct entries).
+- **140 CLI subcommands** wired in `src/dispatch.ts` (the `MAP`
+  table); `artifacts/edgewell-command-list.txt` is the captured
+  output of `node dist/bin/edgewell.js command-list` and lists
+  the exact 140 entries.
 - **Companion HTTP server** with CORS, `OPTIONS` preflight
   handling, HMAC bearer tokens, and a bundled static `web/` UI
   served from the same port — `src/companion/server.ts`,
@@ -133,9 +134,15 @@ peer is reachable.
   URL-with-creds beats email).
 - **Form-factor profiles** ship three ready-to-use knobs —
   `src/profiles.ts` (`mobile`, `tinkerer`, `desktop`).
-- **440 unit + integration tests** run offline (no SDK
+- **445 unit + integration tests** run offline (no SDK
   installed) — `pnpm test` via `node --import tsx --test
-  test/*.test.ts` (script in `package.json`).
+  test/*.test.ts` (script in `package.json`); the
+  `artifacts/test-summary.txt` snapshot shows
+  `tests 445 / pass 445 / fail 0` on 2026-06-18. The 5/5
+  `psy` and 4/4 `bench-profile` unit-test files
+  (`test/psy-command.test.ts`, `test/bench-profile-command.test.ts`)
+  are committed in this revision but not part of the captured
+  summary yet.
 - **v3.0.1 closed 20 of 24 UAT findings plus 3 critical
   code-review blockers** — `README.md` "What's new in v3.0.1".
 
@@ -205,7 +212,7 @@ node bin/edgewell.js profiles apply desktop
 
 # 01:15 — Reproducible in 5 min from clean clone
 pnpm test
-# expected: 440/440 green ✔
+# expected: 445/445 green ✔
 
 # 01:25 — Reproducible bench
 node bin/edgewell.js bench
@@ -251,6 +258,7 @@ counts and content match `HACKATHON-SUBMISSION.md` §12.
 | Per-form-factor deployment guide                            | `docs/DEPLOYMENT.md`                         |
 | Performance numbers (latency, tokens/s, P2P distribution)   | `docs/PERFORMANCE.md`                        |
 | Reproducible bench JSON (profile × model × tok/s)           | `artifacts/bench.json`                       |
+| Cross-profile bench (mobile / tinkerer / desktop)           | `artifacts/bench-profile.json`, `artifacts/bench-profile.txt` |
 | Hardware-proof matrix (profile × model × chunk × tok/s)    | `artifacts/hardware-proof.txt`               |
 | Source-tree SHA-256 fingerprint                             | `artifacts/source-sha256.txt`                |
 | Agents manifest (machine-readable)                          | `artifacts/agents-manifest.json`             |
@@ -258,6 +266,9 @@ counts and content match `HACKATHON-SUBMISSION.md` §12.
 | Worked tool-agent showcase (calculator → search_kb → journal) | `demo/multimodal-tool-showcase.log`        |
 | Step-by-step demo script for the recorded video             | `demo/demo-script.md`                        |
 | Build-in-public thread + per-day calendar                   | `social/build-in-public.md`                  |
+| Psy routing transcript (post-review add)                    | `artifacts/psy-routing.log`                  |
+| Self-contained 90-second demo recording (post-review add)    | `demo/recording.html`, `demo/recording.cast`, `demo/recording-poster.svg` |
+| Hardware proof document (post-review add)                   | `demo/HARDWARE.md`                           |
 
 ### How a community voter verifies in 5 minutes
 
@@ -267,7 +278,7 @@ corepack enable && corepack prepare pnpm@11.6.0 --activate
 pnpm install
 node bin/edgewell.js doctor     # 12/12 green
 node bin/edgewell.js showcase   # 3 questions, 3 specialists
-pnpm test                        # 440/440 green
+pnpm test                        # 445/445 green
 ls artifacts/                    # bench.json, hardware-proof.txt,
                                  # source-sha256.txt all present
 ```

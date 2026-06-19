@@ -64,10 +64,17 @@
       "name": "orchestrator",
       "module": "src/agents/orchestrator.ts",
       "role": "router",
-      "systemPromptSummary": "EdgeWell Router — given a user question, outputs a single JSON object { agent: 'health' | 'finance' | 'lifestyle', reason }. Strips code fences. Falls back to keyword regex on health/finance keywords. Falls through to lifestyle for anything else. Lifestyle uses the LIFESTYLE_SYSTEM prompt ('private on-device habits coach, routines, productivity, mixed health+finance').",
+      "systemPromptSummary": "EdgeWell Router — given a user question, outputs a single JSON object { agent: 'health' | 'finance' | 'lifestyle', reason }. Strips code fences. Falls back to keyword regex on health/finance keywords. Falls through to lifestyle for anything else. Lifestyle uses the LIFESTYLE_SYSTEM prompt ('private on-device habits coach, routines, productivity, mixed health+finance'). v3.0.1: emits a new `domain: 'medical' | null` field on RouteResult when the question matches the mental-health regex (anxiety|therapy|panic|mental|psych|depress|insomnia|ptsd).",
       "tools": ["llm.prompt", "llm.stream"],
       "keywords": ["router", "lifestyle"],
       "cli_description": "Router (not listed by `edgewell agents`, but constructs every other agent via createEdgeWell())."
+    },
+    {
+      "name": "PsySelector",
+      "role": "Picks the right Psy-family model (1.7B or 4B) from the registry based on question complexity and device profile. NOT a chat agent — it's a model-routing helper called by the desktop profile when domain=medical is set.",
+      "module": "src/registry.ts (pickModel function)",
+      "systemPromptSummary": "n/a — pure routing function",
+      "tools": []
     }
   ],
   "routing": {
@@ -77,11 +84,23 @@
       "health": ["symptom", "sleep", "exercise", "diet", "medication", "pain", "stress", "mood"],
       "finance": ["money", "budget", "expense", "saving", "debt", "income", "price", "thb", "usd", "baht"],
       "default": "lifestyle"
+    },
+    "domain_hints": {
+      "field": "RouteResult.domain (v3.0.1)",
+      "medical_regex": "/anxiety|therapy|panic|mental|psych|depress|insomnia|ptsd/i",
+      "emitted_when": "health-keyword regex matches AND the medical-hint regex also matches the original question",
+      "default": null
     }
   },
+  "_routing_enhancements": [
+    "domain-aware routing (mental-health → domain=medical)",
+    "Psy-family model selection (MEDPSY_4B_INST_Q4_K_M for clinical questions on desktop profile)",
+    "Showcase command demonstrates all 3 paths"
+  ],
   "notes": [
     "`edgewell agents` outputs only the 6 specialist descriptions; it does not list the orchestrator (which is a router, not a specialist) or lifestyle. The JSON above adds Orchestrator explicitly because AGENTS.md and src/index.ts both list it as a first-class agent.",
     "The `module` paths are taken from the AGENTS.md specialist inventory table and confirmed by src/index.ts:createEdgeWell().",
-    "systemPromptSummary is paraphrased from the SYSTEM constant in each agent module — not the raw prompt text, to keep this file compact."
+    "systemPromptSummary is paraphrased from the SYSTEM constant in each agent module — not the raw prompt text, to keep this file compact.",
+    "v3.0.1 adds the 8th entry, `PsySelector` — a non-chat model-routing helper (src/registry.ts:pickModel) used by the desktop profile when the orchestrator tags a question as `domain=medical`. It is not constructed by createEdgeWell() and is not listed by `edgewell agents`; it is included here so the manifest reflects the full routing surface."
   ]
 }

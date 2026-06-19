@@ -21,7 +21,7 @@
 corepack enable && corepack prepare pnpm@11.6.0 --activate
 git clone <repo-url> edgewell && cd edgewell
 pnpm install            # @qvac/sdk linked from vendor/qvac-sdk
-pnpm test               # 440/440 green, no SDK required at runtime
+pnpm test               # 445/445 green, no SDK required at runtime
 node bin/edgewell.js showcase   # 3 questions, 3 specialists, offline
 ```
 

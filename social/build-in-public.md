@@ -10,12 +10,12 @@
 |------|----------|-------------------|--------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | D+0  | 18:00    | X, Keet, Discord  | `docs/diagrams/architecture.mmd` rendered diagram | Kickoff. Building EdgeWell for the QVAC hackathon: a private, on-device health + finance coach. TypeScript + QVAC SDK. 1B phone, 8B peer, zero telemetry. #QVAC #EdgeAI |
 | D+1  | 14:00    | X, Keet, Discord  | `social/one-liners.md` hero card                 | Built EdgeWell for the QVAC hackathon: 6 specialists, 1 router, 0 cloud. Same TypeScript binary, three form-factor profiles. Private by default. #QVAC #EdgeAI             |
-| D+2  | 14:00    | X, Keet           | screenshot of `node bin/edgewell.js doctor` ✔ 12/12 | Day 1 shipped: orchestrator + 6 specialists. `edgewell doctor` returns 12/12 green on a clean clone. Offline stub means tests pass without the SDK. #QVAC #EdgeAI       |
+| D+2  | 14:00    | X, Keet           | screenshot of `node bin/edgewell.js doctor` ✔ 11/12 | Day 1 shipped: orchestrator + 6 specialists. `edgewell doctor` returns 11/12 green on a clean clone (the missing `profile` check is a fresh-clone artefact, not a bug). #QVAC #EdgeAI |
 | D+3  | 14:00    | X, LinkedIn       | `docs/diagrams/architecture.mmd` rendered diagram | Day 2: hybrid RAG — TF-IDF + vector cosine + RRF + bigram rerank. Chunks deduped by (source, text) since v3.0.1 so re-ingest is a no-op. #QVAC #EdgeAI                  |
 | D+4  | 14:00    | X, Keet, Discord  | `demo/peer-mesh-demo.log` excerpt                | Day 3: peer mesh. healthy() sorts by latency, stream() walks the list, consensus() majority-votes short answers. Same Node `http` server as `serve`. #QVAC #EdgeAI       |
 | D+5  | 14:00    | X, Keet           | snippet from `src/tool-agent.ts` stuck-loop guard | Day 4: tool agent hardened. Unclosed `<tool>` tags surface as errors; a stuck loop (same calls + same results as last round) stops early. #QVAC #EdgeAI                  |
 | D+7  | 14:00    | X, LinkedIn       | `artifacts/bench.json` profile×tok/s chart       | Mid-week benchmark drop. `edgewell bench` across mobile / tinkerer / desktop profiles. Local 1B is the floor, peer 8B is the ceiling. JSON: `artifacts/bench.json`. #QVAC |
-| D+10 | 14:00    | X, Keet, Discord  | link to `HACKATHON-SUBMISSION.md` in repo        | Final push. EdgeWell v3.0.1 ships 7 agents, ~190 CLI subcommands, hybrid RAG, peer mesh, multimodal ingest, companion server, 20/24 UAT findings closed. Vote on Keet! #QVAC |
+| D+10 | 14:00    | X, Keet, Discord  | link to `HACKATHON-SUBMISSION.md` in repo        | Final push. EdgeWell v3.0.1 ships 7 agents, 140 CLI subcommands, hybrid RAG, peer mesh, multimodal ingest, companion server, 20/24 UAT findings closed. Vote on Keet! #QVAC |
 
 > Calendar also doubles as the Day-of-Week rotation: Discord/Keet for
 > deeper drops (D+0, D+1, D+4, D+5, D+10), X for the headline, LinkedIn
@@ -95,7 +95,7 @@
 
 **Day 10 — submission** *(X, Keet, Discord — D+10 calendar slot)*
 
-11/12 Day 10: submitted. EdgeWell v3.0.1 ships 7 agents, ~190 CLI subcommands, hybrid RAG, peer mesh with consensus, multimodal ingest, companion server, and 20 of 24 UAT findings closed. Demo: doctor, ask, companion --print-token. #QVAC #EdgeAI
+11/12 Day 10: submitted. EdgeWell v3.0.1 ships 7 agents, 140 CLI subcommands, hybrid RAG, peer mesh with consensus, multimodal ingest, companion server, and 20 of 24 UAT findings closed. Demo: doctor, ask, companion --print-token. #QVAC #EdgeAI
 
 ---
 

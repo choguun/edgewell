@@ -96,9 +96,11 @@ pnpm test
 ```
 
 Expected output: a TAP stream from `node --test` with a green summary line
-(`# tests`, `# pass`, `# fail`). All agent tests run against the in-process
-stub; they assert `ask` returns a non-empty string and `streamAsk` yields at
-least one token (per `AGENTS.md` §"Testing the agents").
+(`# tests`, `# pass`, `# fail`). The captured tail at
+`artifacts/test-summary.txt` shows `tests 445 / pass 445 / fail 0` from the
+2026-06-18 run. All agent tests run against the in-process stub; they assert
+`ask` returns a non-empty string and `streamAsk` yields at least one token
+(per `AGENTS.md` §"Testing the agents").
 
 ### 4.4 Smoke-test the CLI
 
@@ -312,8 +314,12 @@ profile=tinkerer model=LLAMA_3_2_1B_INST_Q4_0  vector_dim=64   chunk=300  p2p_ti
 profile=desktop model=LLAMA_3_1_8B_INST_Q4_K_M vector_dim=256  chunk=600  p2p_timeout_ms=5000   tokens/s=…
 ```
 
-Judges can verify the profile knobs match `src/profiles.ts` exactly (lines
-4, 14, 25).
+Judges can verify the profile knobs match `src/profiles.ts` exactly. The
+`PROFILES` map at the top of the file declares `mobile` first, followed
+by `tinkerer` and `desktop`; the relevant `vector.dim`, `rag.chunkSize`,
+`p2p.timeoutMs`, and `companion.host` values appear on the lines
+immediately under each profile key (no line numbers cited here so this
+claim stays correct as the file is edited).
 
 ## 6. Architecture
 
@@ -581,11 +587,14 @@ Seven concrete novel angles, each cited to the file that does the work:
    captioner / transcriber at runtime via `captionFn` / `transcribeFn`.
    See `src/multimodal/sensors.ts`.
 
-6. **On-device encryption + PII redaction + snapshot signing.**
-   `src/crypto.ts` (scrypt + AES-256-GCM), `src/redact.ts` (emails, phones,
-   Thai national IDs, US SSNs, IPv4), and `src/snapshot.ts` produce signed
-   `.json.gz` exports that round-trip through `edgewell import`. No
-   telemetry leaves the device (`docs/SECURITY-MODEL.md`).
+6. **On-device encryption + PII redaction + signed snapshots.**
+   `src/crypto.ts` (scrypt + AES-256-GCM) and `src/redact.ts` (emails,
+   phones, Thai national IDs, US SSNs, IPv4) keep the user's data private
+   on disk and on the wire. `src/commands/snapshot.ts`,
+   `src/commands/snapshot-sign.ts`, and `src/commands/snapshot-verify.ts`
+   produce portable JSON snapshots with SHA-256 sidecar fingerprints that
+   round-trip through `edgewell snapshot merge`. No telemetry leaves the
+   device (`docs/SECURITY-MODEL.md`).
 
 7. **Three form-factor profiles sharing one codebase.**
    `src/profiles.ts` declares `mobile`, `tinkerer`, `desktop` as pure-data
@@ -764,6 +773,8 @@ node dist/bin/edgewell.js psy      # 45-line transcript, no SDK needed
 | `README.md`                                   | repo                | One-page entry; install + quick start                            |
 | `HACKATHON-SUBMISSION.md`                     | this file           | Canonical judge-facing submission                                |
 | `artifacts/bench.json`                        | artifact-builder    | Structured output of `edgewell bench` (profile × model × tok/s)  |
+| `artifacts/bench-profile.json`                | `edgewell bench-profile --json` | Cross-profile medians (mobile / tinkerer / desktop)     |
+| `artifacts/bench-profile.txt`                 | `edgewell bench-profile` | Human-readable per-profile table                                |
 | `artifacts/hardware-proof.txt`                | artifact-builder    | Profile knobs + tokens/s, one line per profile                   |
 | `artifacts/test-summary.txt`                  | `pnpm test` capture | TAP summary of the unit + integration suite                      |
 | `artifacts/orchestrator-trace.txt`            | artifact-builder    | Worked routing trace over 12 sample questions                    |
@@ -771,16 +782,52 @@ node dist/bin/edgewell.js psy      # 45-line transcript, no SDK needed
 | `artifacts/agents-manifest.json`              | static              | Machine-readable list of agents + tools                          |
 | `artifacts/source-sha256.txt`                 | artifact-builder    | Reproducibility fingerprint of the source tree                   |
 | `artifacts/file-list.txt`                     | `git ls-files`      | Exact list of tracked files                                      |
+| `artifacts/companion-smoke.txt`               | recorded run        | Companion boot + `/health` curl                                  |
+| `artifacts/edgewell-help.txt`                 | `edgewell help`     | Top-level help output                                            |
+| `artifacts/edgewell-command-list.txt`         | `edgewell command-list` | Full 140-command registry                                    |
+| `artifacts/edgewell-info.txt`                 | `edgewell info`     | `version: 3.0.1` snapshot                                       |
+| `artifacts/README.md`                         | doc                 | Per-file index of every artifact (15 files)                      |
 | `demo/demo-script.md`                         | doc                 | Step-by-step demo script for a recorded video                    |
 | `demo/multimodal-tool-showcase.log`           | recorded run        | Tool-calling showcase incl. malformed-call + stuck-loop round    |
 | `demo/peer-mesh-demo.log`                     | recorded run        | Worked PeerMesh `healthy / stream / broadcast / consensus` trace |
+| `demo/showcase-compiled.txt`                  | recorded run        | Raw stdout of `edgewell showcase`                                |
+| `demo/showcase-test-run.txt`                  | `pnpm test` filtered to showcase | TAP output of the 5 showcase unit tests (5/5 ✔)         |
+| `demo/recording.cast`                         | recorded run        | Asciinema v2 cast (90 seconds)                                   |
+| `demo/recording.html`                         | doc                 | Self-contained HTML player embedding the cast                    |
+| `demo/recording-poster.svg`                   | doc                 | 400×300 SVG poster for the recording                             |
+| `demo/HARDWARE.md`                            | doc                 | Hardware proof document (3 devices, commands, criteria)         |
+| `demo/video-readme.md`                        | doc                 | Demo-video package index                                         |
 | `social/build-in-public.md`                   | doc                 | Discord / Keet / Twitter thread outline                          |
 | `social/innovation-pitch.md`                  | doc                 | 90-second pitch blurb                                            |
+| `social/twitter-thread.md`                    | doc                 | 9-tweet X thread with CTA                                       |
+| `social/keet-pitch.md`                        | doc                 | ~250-word Keet pitch                                             |
+| `social/keet-channel-post.md`                 | doc                 | Keet room post                                                   |
+| `social/discord-channel-post.md`              | doc                 | Discord-flavored channel post                                    |
+| `social/linkedin-post.md`                     | doc                 | Professional LinkedIn post                                       |
+| `social/community-faq.md`                     | doc                 | 12-Q FAQ for community voters                                    |
+| `social/one-liners.md`                        | doc                 | 10 taglines + hero-image directions                              |
+| `social/demo-narration.md`                    | doc                 | 60-second voice-over script                                      |
+| `social/JUDGES-ONE-PAGER.md`                  | doc                 | Printable one-page summary (post-review add)                     |
+| `social/VOTING-CARD.md`                       | doc                 | Markdown fallback for `vote-card.svg` (post-review add)         |
+| `social/vote-card.svg`                        | doc                 | 800×400 community vote share card (post-review add)              |
+| `social/CONTRIBUTOR-LADDER.md`                | doc                 | 5-rung contributor ladder (post-review add)                     |
+| `social/SPONSOR-PACK.md`                      | doc                 | Sponsor pitch (post-review add)                                 |
+| `social/build-in-public-launch.md`            | doc                 | D+0 launch post (post-review add)                               |
 | `docs/diagrams/architecture.mmd`              | doc                 | Mermaid source for the architecture diagram                      |
+| `docs/diagrams/architecture.txt`              | doc                 | Pure-ASCII architecture fallback                                 |
+| `docs/diagrams/router-flow.mmd`               | doc                 | Router → specialist sequence diagram                             |
+| `docs/diagrams/peer-mesh.mmd`                 | doc                 | Peer-mesh fan-out + consensus diagram                            |
+| `docs/diagrams/multimodal-pipeline.mmd`       | doc                 | Image / audio / sensor ingest paths                              |
+| `docs/diagrams/profile-apply.mmd`             | doc                 | Three form-factor profiles side-by-side                          |
+| `docs/diagrams/README.md`                     | doc                 | Diagram index with render hints                                  |
 | `docs/ARCHITECTURE.md`                        | doc                 | Full architecture reference                                      |
 | `docs/DEPLOYMENT.md`                          | doc                 | Per-form-factor deployment guide                                 |
 | `docs/PERFORMANCE.md`                         | doc                 | Performance characteristics of v3.0.0 hot paths                  |
 | `docs/SECURITY-MODEL.md`                      | doc                 | Threat model + mitigations                                       |
+| `docs/COMMANDS.md`                            | doc                 | Command reference (rotate-secret, journal, etc.)                |
+| `docs/ROADMAP.md`                             | doc                 | v3.0.0 roadmap                                                   |
+| `docs/PLUGINS.md`                             | doc                 | Plugin author guide                                              |
+| `docs/MIGRATION-2-to-3.md`                    | doc                 | 2.x → 3.0.0 migration guide                                      |
 | `AGENTS.md`                                   | doc                 | Specialist reference + extension how-to                          |
 
 ### 12.1 Sample `artifacts/agents-manifest.json`
@@ -936,6 +983,7 @@ the report goes public.
 | Multimodal dispatcher                                               | `src/multimodal/index.ts`                                   | `ingestPath`       |
 | At-rest encryption                                                  | `src/crypto.ts`                                             | scrypt + AES-256-GCM |
 | PII redactor                                                        | `src/redact.ts`                                             | email/phone/Thai ID/SSN/IPv4 |
+| Snapshot sign / verify                                              | `src/commands/snapshot-sign.ts`, `src/commands/snapshot-verify.ts` | both                |
 | Performance numbers                                                 | `docs/PERFORMANCE.md`                                       | tables             |
 | Threat model                                                        | `docs/SECURITY-MODEL.md`                                    | table              |
 | Deployment per profile                                              | `docs/DEPLOYMENT.md`                                        | Mobile / Tinkerer / Desktop |
