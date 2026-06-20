@@ -1032,55 +1032,6 @@ body[data-tab="expenses"] .panel--center {
   opacity: 0.7;
 }
 
-/* Demo-mode banner */
-.demo-banner {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.6rem;
-  padding: 0.65rem 0.85rem;
-  margin-bottom: 0.5rem;
-  background: linear-gradient(135deg, rgba(251, 191, 36, 0.12) 0%, rgba(217, 119, 6, 0.08) 100%);
-  border: 1px solid rgba(251, 191, 36, 0.25);
-  border-radius: var(--radius-md);
-  color: var(--warn);
-  font-size: 0.82rem;
-  line-height: 1.4;
-  box-shadow: var(--shadow-sm);
-}
-.demo-banner-icon {
-  font-size: 1.1rem;
-  flex-shrink: 0;
-}
-.demo-banner-text {
-  flex: 1;
-}
-.demo-banner code {
-  color: var(--warn);
-  background: rgba(251, 191, 36, 0.05);
-  border-color: rgba(251, 191, 36, 0.15);
-}
-.demo-banner-close {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: rgba(251, 191, 36, 0.1);
-  color: var(--warn);
-  border: none;
-  font-size: 0.95rem;
-  line-height: 1;
-  cursor: pointer;
-  transition: background 0.15s ease, transform 0.15s ease;
-}
-.demo-banner-close:hover {
-  background: rgba(251, 191, 36, 0.25);
-  transform: scale(1.08);
-}
-.demo-banner-close:active {
-  transform: scale(0.92);
-}
 
 /* Empty chat state */
 .chat-empty {

@@ -62,8 +62,7 @@ const els = {
   installBtn: document.getElementById("install-btn"),
   tokenBtn: document.getElementById("token-btn"),
   toast: document.getElementById("toast"),
-  demoBanner: document.getElementById("demo-banner"),
-  demoBannerClose: document.getElementById("demo-banner-close"),
+
   sidebar: document.getElementById("sidebar"),
   sidebarBtn: document.getElementById("sidebar-btn"),
   sidebarClose: document.getElementById("sidebar-close"),
@@ -791,12 +790,7 @@ async function ping() {
         }
       }
       setP2p(p2pState, p2pLabel);
-      // v3.0.2: show the demo-mode banner when the local
-      // vendor stub is answering instead of a real LLM.
-      // The dismissal is per-session only (not persisted).
-      if (j?.demo && !sessionStorage.getItem("demo-banner-dismissed")) {
-        if (els.demoBanner) els.demoBanner.hidden = false;
-      }
+
       // One-line status: version, model, counts. Skips
       // duplication of info that lives in the P2P badge.
       const counts = j?.counts
@@ -875,21 +869,7 @@ els.tokenBtn.addEventListener("click", async () => {
   await Promise.all([loadJournal(), loadExpenses()]);
 });
 
-/**
- * Dismiss the demo-mode banner. Per-session only — we use
- * sessionStorage so the user sees the banner again after a
- * hard refresh / new tab. The banner is informational, not
- * a critical warning, so a one-shot dismissal is enough.
- */
-els.demoBannerClose?.addEventListener("click", () => {
-  if (els.demoBanner) els.demoBanner.hidden = true;
-  try {
-    sessionStorage.setItem("demo-banner-dismissed", "1");
-  } catch {
-    /* sessionStorage may be unavailable (private mode); the
-     * banner still hides for this session. */
-  }
-});
+
 
 /* ------------------------------ TABS ---------------------------------- */
 

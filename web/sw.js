@@ -1,4 +1,4 @@
-// EdgeWell service worker. v3.1.1.
+// EdgeWell service worker. v3.1.2.
 //
 // Caches the static shell (HTML, CSS, JS, manifest, icon) so the
 // phone-as-companion story still loads when the device is briefly
@@ -13,7 +13,7 @@
 // Bump CACHE_NAME on every release so older cached shells are
 // evicted in a single `activate` pass.
 
-const CACHE_NAME = "edgewell-shell-v3.1.1";
+const CACHE_NAME = "edgewell-shell-v3.1.2";
 const SHELL = [
   "./",
   "./index.html",

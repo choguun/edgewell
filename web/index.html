@@ -85,15 +85,6 @@
 
       <div class="topbar-actions">
         <button
-          id="sidebar-btn"
-          class="btn btn--ghost"
-          type="button"
-          title="Conversations"
-          aria-label="Open conversations"
-        >
-          <span class="btn-icon">≡</span><span class="btn-text"> Chats</span>
-        </button>
-        <button
           id="theme-btn"
           class="btn btn--ghost"
           type="button"
@@ -111,22 +102,6 @@
           <span class="dot" aria-hidden="true"></span>
           <span id="p2p-text">local</span>
         </span>
-        <button
-          id="install-btn"
-          class="btn btn--ghost"
-          type="button"
-          hidden
-        >
-          <span class="btn-icon">⤓</span><span class="btn-text"> Install</span>
-        </button>
-        <button
-          id="token-btn"
-          class="btn btn--ghost"
-          type="button"
-          title="Set bearer token"
-        >
-          <span class="btn-icon">🔑</span><span class="btn-text"> Token</span>
-        </button>
       </div>
     </header>
 
@@ -182,19 +157,6 @@
           </span>
         </header>
 
-        <div id="demo-banner" class="demo-banner" hidden>
-          <span class="demo-banner-icon" aria-hidden="true">🧪</span>
-          <span class="demo-banner-text">
-            Demo mode — the <code>@qvac/sdk</code> isn't installed, so replies are
-            canned. Install it (<code>pnpm add @qvac/sdk</code>) for real answers.
-          </span>
-          <button
-            id="demo-banner-close"
-            class="demo-banner-close"
-            type="button"
-            aria-label="Dismiss"
-          >×</button>
-        </div>
 
         <div id="messages" class="messages" aria-live="polite"></div>
 
