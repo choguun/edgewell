@@ -6,13 +6,21 @@
       name="viewport"
       content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
-    <meta name="theme-color" content="#0f1115" />
+    <meta name="theme-color" content="#090a0f" />
     <meta name="color-scheme" content="light dark" />
     <meta
       name="description"
       content="EdgeWell — private, on-device health and finance coach."
     />
     <title>EdgeWell Companion</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
 
     <!-- PWA hooks. The manifest is at the same origin so a
          phone browser pointed at the companion IP picks it up
@@ -82,7 +90,7 @@
           title="Conversations"
           aria-label="Open conversations"
         >
-          ≡ Chats
+          <span class="btn-icon">≡</span><span class="btn-text"> Chats</span>
         </button>
         <button
           id="theme-btn"
@@ -108,7 +116,7 @@
           type="button"
           hidden
         >
-          ⤓ Install
+          <span class="btn-icon">⤓</span><span class="btn-text"> Install</span>
         </button>
         <button
           id="token-btn"
@@ -116,7 +124,7 @@
           type="button"
           title="Set bearer token"
         >
-          🔑 Token
+          <span class="btn-icon">🔑</span><span class="btn-text"> Token</span>
         </button>
       </div>
     </header>
