@@ -619,15 +619,17 @@ async function loadJournal() {
           })
         : "";
       li.innerHTML =
-        `${escapeHtml(entry.text)}` +
+        `<div class="journal-text">${escapeHtml(entry.text)}</div>` +
+        `<div class="journal-meta">` +
         (ts
-          ? `<span class="tags">${escapeHtml(ts)}</span>`
+          ? `<span class="time-stamp">${escapeHtml(ts)}</span>`
           : "") +
         (entry.tags?.length
-          ? `<span class="tags">${entry.tags
-              .map((t) => `#${escapeHtml(t)}`)
-              .join(" ")}</span>`
-          : "");
+          ? `<span class="tags-list">${entry.tags
+              .map((t) => `<span class="tag-pill">#${escapeHtml(t)}</span>`)
+              .join("")}</span>`
+          : "") +
+        `</div>`;
       els.journalList.appendChild(li);
     }
     els.journalCount.textContent = `${entries.length} entr${
@@ -705,10 +707,12 @@ async function loadExpenses() {
           })
         : "";
       li.innerHTML =
+        `<div class="expense-row">` +
         `<span class="amt">${(Number(e.amount) || 0).toFixed(2)}</span>` +
         `<span class="cat">${escapeHtml(e.category || "other")}</span>` +
+        `</div>` +
         (e.note
-          ? `<div class="tags">${escapeHtml(e.note)}</div>`
+          ? `<div class="note">${escapeHtml(e.note)}</div>`
           : "") +
         (ts ? `<span class="when">${escapeHtml(ts)}</span>` : "");
       els.expenseList.appendChild(li);
