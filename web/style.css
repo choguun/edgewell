@@ -410,6 +410,7 @@ code {
 }
 
 .panel {
+  position: relative;
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -1414,4 +1415,52 @@ code {
   .brand-text #status-text {
     display: none;
   }
+}
+
+/* Theme smooth transitions */
+html.theme-transition,
+html.theme-transition *,
+html.theme-transition *:before,
+html.theme-transition *:after {
+  transition: background var(--tr-normal) !important,
+              background-color var(--tr-normal) !important,
+              color var(--tr-normal) !important,
+              border-color var(--tr-normal) !important,
+              box-shadow var(--tr-normal) !important;
+  transition-delay: 0s !important;
+}
+
+/* Floating Scroll-to-Bottom Button */
+.scroll-bottom-btn {
+  position: absolute;
+  bottom: 72px;
+  right: 1.5rem;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--shadow-md);
+  z-index: 20;
+  font-size: 1.1rem;
+  font-weight: bold;
+  transition: opacity var(--tr-fast), transform var(--tr-fast), background var(--tr-fast);
+  opacity: 0.9;
+}
+.scroll-bottom-btn:hover {
+  background: var(--panel);
+  opacity: 1;
+  transform: translateY(-2px);
+  border-color: var(--accent);
+}
+.scroll-bottom-btn:active {
+  transform: translateY(0);
+}
+.scroll-bottom-btn[hidden] {
+  display: none !important;
 }

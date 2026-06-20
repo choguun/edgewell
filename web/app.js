@@ -74,6 +74,8 @@ const els = {
   body: document.body,
 };
 
+let autoScroll = true;
+
 // v3.0.2: iOS Safari never fires `beforeinstallprompt`, so the
 // generic install button is useless there. Detect once at boot
 // and swap it for an instructional toast on the first user
@@ -498,7 +500,7 @@ async function submitChat(raw) {
         const textNode = document.createTextNode(buffer);
         body.appendChild(textNode);
         body.appendChild(cursor);
-        els.messages.scrollTop = els.messages.scrollHeight;
+        if (autoScroll) els.messages.scrollTop = els.messages.scrollHeight;
       } else if (ev.type === "error") {
         if (cursor.parentElement) cursor.remove();
         const err = document.createElement("div");
@@ -1052,12 +1054,16 @@ function toggleTheme() {
     (document.documentElement.dataset.theme || "dark") === "light"
       ? "dark"
       : "light";
+  document.documentElement.classList.add("theme-transition");
   try {
     localStorage.setItem(THEME_KEY, next);
   } catch {
     /* private mode */
   }
   applyTheme(next);
+  setTimeout(() => {
+    document.documentElement.classList.remove("theme-transition");
+  }, 350);
 }
 
 els.themeBtn?.addEventListener("click", toggleTheme);
@@ -1276,6 +1282,38 @@ async function deleteConversation(conv) {
   }
   await ping();
   await Promise.all([loadJournal(), loadExpenses()]);
+
+  // Floating scroll bottom button event setup
+  if (els.messages) {
+    els.messages.addEventListener("scroll", () => {
+      const threshold = 150;
+      const distanceToBottom =
+        els.messages.scrollHeight -
+        els.messages.scrollTop -
+        els.messages.clientHeight;
+      autoScroll = distanceToBottom <= threshold;
+
+      const scrollBottomBtn = document.getElementById("scroll-bottom-btn");
+      if (scrollBottomBtn) {
+        if (distanceToBottom > 300) {
+          scrollBottomBtn.hidden = false;
+        } else {
+          scrollBottomBtn.hidden = true;
+        }
+      }
+    });
+  }
+
+  const scrollBottomBtn = document.getElementById("scroll-bottom-btn");
+  if (scrollBottomBtn) {
+    scrollBottomBtn.addEventListener("click", () => {
+      els.messages.scrollTo({
+        top: els.messages.scrollHeight,
+        behavior: "smooth",
+      });
+    });
+  }
+
   // Periodic health probe — also lets the P2P dot recover
   // automatically if the companion restarts.
   setInterval(ping, 15_000);
