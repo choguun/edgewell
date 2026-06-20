@@ -423,6 +423,7 @@ els.chatForm.addEventListener("submit", async (e) => {
 async function submitChat(raw) {
   const message = (raw ?? "").trim();
   if (!message || sending) return;
+  autoScroll = true;
   // Remove the empty-state placeholder the first time the
   // user actually sends a message. Without this the new
   // assistant bubble would appear underneath the "No
@@ -1238,6 +1239,7 @@ async function switchToConversation(conv) {
   if (messages.length === 0) renderChatEmpty();
   renderConversationList();
   els.messages.scrollTop = els.messages.scrollHeight;
+  autoScroll = true;
 }
 
 async function deleteConversation(conv) {
