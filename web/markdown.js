@@ -142,6 +142,50 @@
         continue;
       }
 
+      if (/^\|/.test(line)) {
+        const tableLines = [];
+        while (i < lines.length && /^\|/.test(lines[i] ?? "")) {
+          tableLines.push(lines[i]);
+          i++;
+        }
+        if (tableLines.length >= 2) {
+          const headerLine = tableLines[0] || "";
+          const delimiterLine = tableLines[1] || "";
+          if (/^[|:\-\s]+$/.test(delimiterLine)) {
+            const headers = headerLine.split("|").map(h => h.trim()).filter((h, index, arr) => index > 0 && index < arr.length - 1);
+            const alignments = delimiterLine.split("|").map(d => {
+              const clean = d.trim();
+              if (clean.startsWith(":") && clean.endsWith(":")) return "center";
+              if (clean.endsWith(":")) return "right";
+              return "left";
+            }).filter((_, index, arr) => index > 0 && index < arr.length - 1);
+
+            const bodyRows = tableLines.slice(2).map(row => {
+              return row.split("|").map(cell => cell.trim()).filter((_, index, arr) => index > 0 && index < arr.length - 1);
+            });
+
+            let htmlTable = `<div class="md-table-container"><table class="md-table"><thead><tr>`;
+            headers.forEach((h, idx) => {
+              const align = alignments[idx] || "left";
+              htmlTable += `<th style="text-align: ${align}">${renderInline(escapeHtml(h))}</th>`;
+            });
+            htmlTable += `</tr></thead><tbody>`;
+            bodyRows.forEach(row => {
+              htmlTable += `<tr>`;
+              row.forEach((cell, idx) => {
+                const align = alignments[idx] || "left";
+                htmlTable += `<td style="text-align: ${align}">${renderInline(escapeHtml(cell))}</td>`;
+              });
+              htmlTable += `</tr>`;
+            });
+            htmlTable += `</tbody></table></div>`;
+            out.push(htmlTable);
+            continue;
+          }
+        }
+        i -= tableLines.length; // fallback if not a valid table structure
+      }
+
       if (/^\s*$/.test(line)) {
         i++;
         continue;

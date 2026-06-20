@@ -722,6 +722,21 @@ code {
 .message.user .md-pre .md-code {
   color: #ffffff;
 }
+.message.user .md-table-container {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+.message.user .md-table th {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+.message.user .md-table th,
+.message.user .md-table td {
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+}
+.message.user .md-table tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.05);
+}
 .message.assistant {
   background: var(--bg-2);
   border: 1px solid var(--border);
@@ -840,6 +855,35 @@ code {
   font-weight: 700;
   color: var(--muted);
   text-transform: uppercase;
+}
+.md-table-container {
+  overflow-x: auto;
+  margin: 0.65rem 0;
+  width: 100%;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+}
+.md-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85em;
+  line-height: 1.4;
+}
+.md-table th,
+.md-table td {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+}
+.md-table th {
+  background: var(--bg-2);
+  font-weight: 700;
+  color: var(--text);
+}
+.md-table td {
+  color: var(--text-secondary);
+}
+.md-table tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
 }
 .md-ul,
 .md-ol {
