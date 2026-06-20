@@ -235,25 +235,102 @@ function renderChatEmpty() {
 /* ----------------------------- RENDERING ------------------------------ */
 
 function addMessage(role, text, agent = null) {
+  // v3.0.2: every message gets a meta row (agent chip on
+  // the left, copy button on the right) and a body for
+  // the text. For assistant messages the agent chip is
+  // added later when the `route` event arrives, so we
+  // expose a `meta` element the route handler can append
+  // to. The copy button is always there and gets its
+  // `copiedText` updated when streaming finishes (so the
+  // user copies the final rendered text, not the
+  // mid-stream plaintext with raw markdown).
   const div = document.createElement("div");
   div.className = `message ${role}`;
+  if (agent) div.classList.add(`msg-agent-${agent}`);
+
+  const meta = document.createElement("div");
+  meta.className = "meta";
+
+  let copiedText = text;
+  const copyBtn = document.createElement("button");
+  copyBtn.type = "button";
+  copyBtn.className = "copy-btn";
+  copyBtn.setAttribute("aria-label", "Copy message");
+  copyBtn.title = "Copy";
+  copyBtn.textContent = "📋";
+  copyBtn.addEventListener("click", () => {
+    copyToClipboard(copiedText).then((ok) => {
+      if (!ok) return;
+      copyBtn.classList.add("copied");
+      copyBtn.textContent = "✓";
+      setTimeout(() => {
+        copyBtn.classList.remove("copied");
+        copyBtn.textContent = "📋";
+      }, 1500);
+    });
+  });
+  meta.appendChild(copyBtn);
+
   if (agent) {
-    div.classList.add(`msg-agent-${agent}`);
-    const meta = document.createElement("div");
-    meta.className = "meta";
     const chip = document.createElement("span");
     chip.className = `chip--agent chip--${agent}`;
     chip.textContent = agent;
-    meta.appendChild(chip);
-    div.appendChild(meta);
+    meta.insertBefore(chip, copyBtn);
   }
+
   const body = document.createElement("div");
   body.className = "body";
   body.textContent = text;
-  div.appendChild(body);
+
+  div.append(meta, body);
   els.messages.appendChild(div);
   els.messages.scrollTop = els.messages.scrollHeight;
-  return body;
+  return {
+    div,
+    body,
+    meta,
+    copyBtn,
+    setCopiedText: (t) => {
+      copiedText = t;
+    },
+  };
+}
+
+/**
+ * Copy a string to the clipboard with a graceful fallback
+ * for browsers that block `navigator.clipboard` (e.g. when
+ * the page is served over plain HTTP on a non-localhost
+ * origin). Returns a promise that resolves to `true` on
+ * success.
+ */
+async function copyToClipboard(text) {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    /* fall through to the textarea hack */
+  }
+  // Fallback for older / insecure-context browsers. The
+  // textarea is created off-screen so it doesn't flash.
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  ta.setAttribute("readonly", "");
+  ta.style.position = "fixed";
+  ta.style.top = "0";
+  ta.style.left = "0";
+  ta.style.opacity = "0";
+  document.body.appendChild(ta);
+  ta.select();
+  let ok = false;
+  try {
+    ok = document.execCommand("copy");
+  } catch {
+    ok = false;
+  }
+  document.body.removeChild(ta);
+  return ok;
 }
 
 function renderCitations(target, hits) {
@@ -300,6 +377,22 @@ function escapeHtml(s) {
     .replaceAll("'", "&#39;");
 }
 
+// v3.0.2: markdown rendering lives in `web/markdown.js` so
+// it can be unit-tested without a DOM. The script tag in
+// index.html loads it first and exposes it on `window`
+// as `EdgeWellMarkdown`. We pull the renderer through the
+// global so the rest of the file is one import.
+function renderMarkdown(src) {
+  const fn =
+    (typeof window !== "undefined" && window.EdgeWellMarkdown?.renderMarkdown) ||
+    null;
+  if (fn) return fn(src);
+  // Fallback: the very rare case where markdown.js failed
+  // to load (e.g. the static handler 500'd). Just escape
+  // the input so we never accidentally render raw HTML.
+  return `<p class="md-p">${escapeHtml(String(src ?? ""))}</p>`;
+}
+
 /* -------------------------- CHAT SUBMISSION --------------------------- */
 
 let sending = false;
@@ -324,11 +417,13 @@ async function submitChat(raw) {
   els.chatInput.value = "";
   addMessage("user", message);
   // Reserve an assistant bubble; we fill it in as tokens arrive.
+  // `addMessage` now returns a record with the bubble div,
+  // the body, and a `setCopiedText` so the copy button
+  // picks up the final rendered text once the stream ends.
   const bubble = addMessage("assistant", "", null);
-  const body = bubble;
-  let agentChip = null;
-  let citationsEl = null;
+  const { div: bubbleDiv, body, setCopiedText } = bubble;
   let pendingCitations = null;
+  let buffer = "";
   let cursor = document.createElement("span");
   cursor.className = "cursor";
   body.appendChild(cursor);
@@ -336,20 +431,25 @@ async function submitChat(raw) {
   try {
     for await (const ev of streamChat(message)) {
       if (ev.type === "route") {
-        agentChip = ev.agent;
-        bubble.parentElement.classList.add(`msg-agent-${ev.agent}`);
-        const meta = bubble.parentElement.querySelector(".meta");
+        bubbleDiv.classList.add(`msg-agent-${ev.agent}`);
+        // Insert the agent chip into the pre-built meta row
+        // (in front of the copy button).
+        const meta = bubbleDiv.querySelector(".meta");
         if (meta) {
           const chip = document.createElement("span");
           chip.className = `chip--agent chip--${ev.agent}`;
           chip.textContent = ev.agent;
-          meta.appendChild(chip);
+          meta.insertBefore(chip, meta.firstChild);
         }
       } else if (ev.type === "context") {
         pendingCitations = ev.hits;
       } else if (ev.type === "token") {
+        // Coalesce per-event DOM writes by writing straight
+        // into a single text node; this is O(1) per token.
+        buffer += ev.text;
         if (cursor.parentElement) cursor.remove();
-        body.appendChild(document.createTextNode(ev.text));
+        const textNode = document.createTextNode(buffer);
+        body.appendChild(textNode);
         body.appendChild(cursor);
         els.messages.scrollTop = els.messages.scrollHeight;
       } else if (ev.type === "error") {
@@ -360,6 +460,13 @@ async function submitChat(raw) {
         els.messages.appendChild(err);
       } else if (ev.type === "done") {
         if (cursor.parentElement) cursor.remove();
+        // Render the final text as markdown. The plain
+        // `textContent` is preserved on the copy button so
+        // clipboard users get clean text without the raw
+        // markdown tokens they may have seen during
+        // streaming.
+        body.innerHTML = renderMarkdown(buffer);
+        setCopiedText(buffer);
         if (pendingCitations && pendingCitations.length > 0) {
           renderCitations(body, pendingCitations);
         }
