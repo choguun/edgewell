@@ -17,13 +17,27 @@
     "test": "node --import tsx --test test/*.test.ts",
     "test:js": "node --test test/*.test.js"
   },
-  "keywords": ["qvac", "edge", "ai", "health", "finance", "coach", "hackathon", "showcase", "multi-agent", "p2p", "tool-calling", "rag"],
+  "keywords": [
+    "qvac",
+    "edge",
+    "ai",
+    "health",
+    "finance",
+    "coach",
+    "hackathon",
+    "showcase",
+    "multi-agent",
+    "p2p",
+    "tool-calling",
+    "rag"
+  ],
   "license": "MIT",
   "engines": {
     "node": ">=22.17"
   },
   "dependencies": {
-    "@qvac/sdk": "link:./vendor/qvac-sdk"
+    "@qvac/sdk": "^0.13.5",
+    "bare-runtime-darwin-arm64": "^1.29.4"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

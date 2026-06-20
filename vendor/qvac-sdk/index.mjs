@@ -1,7 +1,11 @@
-// Local stub for @qvac/sdk. The real package is not on the public registry.
-// src/qvac.js dynamic-imports it and falls back to a deterministic local
-// response when the real one is missing. This stub makes `pnpm install` and
-// `tsc` resolve the import cleanly. Tests inject a mock via sdkExports.
+// Local stub for @qvac/sdk. The real package lives at
+// `@qvac/sdk` on npm; this file is the offline fallback used
+// when the real package isn't installed (or in the test
+// suite). The marker `__isStub = true` lets
+// `EdgeWellLLM.isDemo()` distinguish this from the real SDK
+// without having to make any network calls.
+
+export const __isStub = true;
 
 export async function loadModel({ modelSrc, onProgress = () => {} } = {}) {
   onProgress({ loaded: 1, total: 1 });

@@ -3,23 +3,61 @@
 
 import type { ChatMessage, LLM, PromptInput } from "./llm-types.js";
 
-// Shape of the @qvac/sdk module. Imported dynamically so the real
-// package doesn't need to be installed for tests or the CLI to
-// start. The local stub at vendor/qvac-sdk/ matches this shape.
+// Shape of the @qvac/sdk module. v3.0.2: the real SDK has a
+// richer surface than the legacy stub used to expose. The key
+// changes are:
+//   - `loadModel` now takes `modelType` (e.g.
+//     "llamacpp-completion") and a `modelConfig` block, and
+//     accepts either a model-id string or a `ModelDescriptor`
+//     constant exported by the SDK.
+//   - `completion` returns a `CompletionRun` whose canonical
+//     surface is `.events` (an AsyncIterable of typed events
+//     like `contentDelta`, `rawDelta`, `thinkingDelta`,
+//     `toolCall`, `completionDone`) and `.final` (a Promise
+//     for the aggregated result). The legacy `tokenStream` /
+//     `text` properties still exist but are deprecated; we use
+//     the new event stream.
+// We import the type via `await import("@qvac/sdk")` and
+// treat the module as a black box for the fields we touch.
+interface QvacSdkModelDescriptor {
+  name: string;
+  [key: string]: unknown;
+}
+
+interface QvacSdkCompletionEvent {
+  type: string;
+  seq?: number;
+  text?: string;
+  [key: string]: unknown;
+}
+
+interface QvacSdkCompletionRun {
+  events: AsyncIterable<QvacSdkCompletionEvent>;
+  final: Promise<{ content: string; [key: string]: unknown }>;
+  // Legacy conveniences (still exported by the SDK):
+  tokenStream?: AsyncIterable<string>;
+  text?: string;
+}
+
 interface QvacSdk {
-  loadModel(opts: { modelSrc?: string; onProgress?: (p: { loaded: number; total: number }) => void }): Promise<string>;
+  loadModel(opts: {
+    modelSrc: string | QvacSdkModelDescriptor;
+    modelType?: string;
+    modelConfig?: Record<string, unknown>;
+    onProgress?: (p: { loaded: number; total: number }) => void;
+  }): Promise<string> & { requestId?: string };
   unloadModel(opts: { modelId: string }): Promise<void>;
   completion(opts: {
     modelId: string;
     history: ChatMessage[];
-    stream: boolean;
+    stream?: boolean;
     maxTokens?: number;
     temperature?: number;
-  }): Promise<
-    | { tokenStream: AsyncIterable<string> }
-    | { text: string }
-    | string
-  >;
+    captureThinking?: boolean;
+  }): Promise<QvacSdkCompletionRun>;
+  // Marker set by the vendor stub so isDemo() can detect
+  // demo mode without making any network calls.
+  __isStub?: boolean;
 }
 
 export interface EdgeWellLLMOptions {
@@ -38,22 +76,29 @@ export interface EdgeWellLLM extends LLM {
   unload(): Promise<void>;
 }
 
-type CompletionResult = { tokenStream: AsyncIterable<string> } | { text: string } | string;
-
-function isTokenStreamResult(
-  r: CompletionResult,
-): r is { tokenStream: AsyncIterable<string> } {
-  return typeof r === "object" && r !== null && "tokenStream" in r;
-}
+type CompletionResult = QvacSdkCompletionRun;
 
 async function textFromResult(result: CompletionResult): Promise<string> {
-  if (typeof result === "string") return result;
-  if (isTokenStreamResult(result)) {
-    let text = "";
-    for await (const tok of result.tokenStream) text += tok;
-    return text;
+  // Drain the events stream into a single string. The real
+  // SDK exposes typed events (contentDelta, rawDelta, etc.);
+  // we keep the public surface simple by concatenating the
+  // `text` of every event. For more advanced use (tool
+  // calls, thinking tokens) the orchestrator would need to
+  // inspect the event stream directly.
+  let text = "";
+  for await (const ev of result.events) {
+    if (typeof ev?.text === "string") text += ev.text;
   }
-  return result.text;
+  // Prefer the aggregated final result if the SDK
+  // populated it (saves re-iterating the events), but fall
+  // back to whatever we accumulated.
+  try {
+    const finalText = (await result.final)?.content;
+    if (typeof finalText === "string" && finalText.length > 0) return finalText;
+  } catch {
+    /* final may reject if the stream errored; keep what we have */
+  }
+  return text;
 }
 
 export class EdgeWellLLM {
@@ -88,16 +133,19 @@ export class EdgeWellLLM {
 
   private async _probeDemo(): Promise<void> {
     try {
+      // v3.0.2: detect demo mode WITHOUT loading a model.
+      // The vendor stub exports `__isStub = true`; the real
+      // SDK doesn't. This way /health can report demo=true
+      // on the first call without paying the cost of a
+      // 700+ MB model download just to ask "are we a stub?".
       const sdk = this._sdk ?? (await import("@qvac/sdk").catch(() => null));
       if (!sdk) return;
       this._sdk = sdk as QvacSdk;
-      const id = await sdk.loadModel({ modelSrc: this.model });
-      if (typeof id === "string" && id.startsWith("stub-model:")) {
+      if ((sdk as { __isStub?: boolean }).__isStub === true) {
         this._isDemo = true;
-        this.modelId = id;
       }
     } catch {
-      /* SDK not loadable; treat as real (non-demo) */
+      /* best-effort */
     }
   }
 
@@ -133,10 +181,26 @@ export class EdgeWellLLM {
   async load(): Promise<string | null> {
     if (this.modelId) return this.modelId;
     const sdk = await this._ensureSdk();
-    this.modelId = await sdk.loadModel({
-      modelSrc: this.model,
-      onProgress: this.onProgress,
-    });
+    // v3.0.2: the real SDK needs a `ModelDescriptor` constant
+    // (not a plain string) so it can infer the engine.
+    // Look the constant up on the SDK by name. If the user
+    // passed a string we don't know, we fall back to
+    // `modelType: "llamacpp-completion"` which is what the
+    // EdgeWell config uses today.
+    const modelSrc = (sdk as unknown as Record<string, unknown>)[this.model]
+      ?? this.model;
+    try {
+      this.modelId = await sdk.loadModel({
+        modelSrc: modelSrc as never,
+        modelType: "llamacpp-completion",
+        modelConfig: { ctx_size: 2048 },
+        onProgress: this.onProgress,
+      });
+    } catch (err) {
+      // If the lookup-by-constant path failed too, the
+      // original error is more informative; re-raise it.
+      throw err;
+    }
     return this.modelId;
   }
 
@@ -154,9 +218,7 @@ export class EdgeWellLLM {
     maxTokens,
     temperature,
     stream,
-  }: PromptInput & { stream: boolean }): Promise<
-    { tokenStream: AsyncIterable<string> } | { text: string } | string
-  > {
+  }: PromptInput & { stream: boolean }): Promise<QvacSdkCompletionRun> {
     await this.load();
     const fullHistory: ChatMessage[] = [];
     if (system) fullHistory.push({ role: "system", content: system });
@@ -204,14 +266,14 @@ export class EdgeWellLLM {
       temperature,
       stream: true,
     });
-    if (typeof result === "string") {
-      yield result;
-      return;
+    // The real SDK yields typed events; we forward the `text`
+    // of every `contentDelta` (and any other event that
+    // happens to carry a text payload) so the caller sees
+    // the same token stream it used to get from the stub.
+    for await (const ev of result.events) {
+      if (typeof ev?.text === "string" && ev.text.length > 0) {
+        yield ev.text;
+      }
     }
-    if (isTokenStreamResult(result)) {
-      for await (const tok of result.tokenStream) yield tok;
-      return;
-    }
-    yield result.text;
   }
 }
