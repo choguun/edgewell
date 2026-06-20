@@ -1017,12 +1017,13 @@ code {
   gap: 0.6rem;
   padding: 0.65rem 0.85rem;
   margin-bottom: 0.5rem;
-  background: var(--warn-bg);
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.12) 0%, rgba(217, 119, 6, 0.08) 100%);
   border: 1px solid rgba(251, 191, 36, 0.25);
   border-radius: var(--radius-md);
   color: var(--warn);
   font-size: 0.82rem;
   line-height: 1.4;
+  box-shadow: var(--shadow-sm);
 }
 .demo-banner-icon {
   font-size: 1.1rem;
@@ -1037,13 +1038,26 @@ code {
   border-color: rgba(251, 191, 36, 0.15);
 }
 .demo-banner-close {
-  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(251, 191, 36, 0.1);
   color: var(--warn);
-  border: 0;
-  font-size: 1.2rem;
+  border: none;
+  font-size: 0.95rem;
   line-height: 1;
   cursor: pointer;
-  padding: 0 0.2rem;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.demo-banner-close:hover {
+  background: rgba(251, 191, 36, 0.25);
+  transform: scale(1.08);
+}
+.demo-banner-close:active {
+  transform: scale(0.92);
 }
 
 /* Empty chat state */
@@ -1305,11 +1319,13 @@ code {
   grid-template-columns: 1fr auto;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.65rem 0.85rem;
+  padding: 0.65rem 0.85rem 0.65rem 1.05rem;
   background: var(--panel-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   cursor: pointer;
+  position: relative;
+  overflow: hidden;
   transition: background var(--tr-fast), border-color var(--tr-fast);
 }
 .conversation-item:hover {
@@ -1319,6 +1335,15 @@ code {
 .conversation-item.active {
   border-color: var(--accent);
   background: var(--accent-light);
+}
+.conversation-item.active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--accent-gradient);
 }
 .conversation-item .title {
   font-size: 0.86rem;

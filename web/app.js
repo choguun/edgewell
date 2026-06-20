@@ -988,6 +988,15 @@ if (location.protocol.startsWith("http") && "serviceWorker" in navigator) {
       .register("sw.js", { scope: "./" })
       .catch((err) => console.warn("sw register failed", err));
   });
+
+  // Automatically refresh when the new service worker takes over
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (!refreshing) {
+      refreshing = true;
+      window.location.reload();
+    }
+  });
 }
 
 /* ----------------------------- ONLINE/OFFLINE -------------------------- */
