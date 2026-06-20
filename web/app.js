@@ -64,6 +64,13 @@ const els = {
   toast: document.getElementById("toast"),
   demoBanner: document.getElementById("demo-banner"),
   demoBannerClose: document.getElementById("demo-banner-close"),
+  sidebar: document.getElementById("sidebar"),
+  sidebarBtn: document.getElementById("sidebar-btn"),
+  sidebarClose: document.getElementById("sidebar-close"),
+  sidebarBackdrop: document.getElementById("sidebar-backdrop"),
+  newChatBtn: document.getElementById("new-chat-btn"),
+  conversationList: document.getElementById("conversation-list"),
+  themeBtn: document.getElementById("theme-btn"),
   body: document.body,
 };
 
@@ -234,7 +241,7 @@ function renderChatEmpty() {
 
 /* ----------------------------- RENDERING ------------------------------ */
 
-function addMessage(role, text, agent = null) {
+function addMessage(role, text, agent = null, opts = null) {
   // v3.0.2: every message gets a meta row (agent chip on
   // the left, copy button on the right) and a body for
   // the text. For assistant messages the agent chip is
@@ -280,7 +287,16 @@ function addMessage(role, text, agent = null) {
 
   const body = document.createElement("div");
   body.className = "body";
-  body.textContent = text;
+  // `complete: true` means the message is already finalized
+  // (e.g. loaded from IndexedDB on conversation switch).
+  // We render the markdown directly so the user sees the
+  // formatted view immediately instead of a raw-text frame
+  // that would otherwise be replaced on the next tick.
+  if (opts?.complete) {
+    body.innerHTML = renderMarkdown(text);
+  } else {
+    body.textContent = text;
+  }
 
   div.append(meta, body);
   els.messages.appendChild(div);
@@ -416,6 +432,35 @@ async function submitChat(raw) {
   setPromptDisabled(true);
   els.chatInput.value = "";
   addMessage("user", message);
+  // v3.0.2: conversation persistence. If no conversation is
+  // open, create one titled from the first user message.
+  // Both the user message and the eventual assistant reply
+  // are saved to IndexedDB so a refresh keeps the thread.
+  if (
+    !STATE.currentConversationId &&
+    window.EdgeWellStore?.store?.isAvailable?.()
+  ) {
+    const conv = await window.EdgeWellStore.store.createConversation(
+      truncateTitle(message),
+    );
+    STATE.conversations.unshift(conv);
+    STATE.currentConversationId = conv.id;
+    try {
+      localStorage.setItem(LAST_CONV_KEY, conv.id);
+    } catch {
+      /* private mode */
+    }
+    renderConversationList();
+  }
+  if (
+    STATE.currentConversationId &&
+    window.EdgeWellStore?.store?.isAvailable?.()
+  ) {
+    await window.EdgeWellStore.store.addMessage(
+      STATE.currentConversationId,
+      { role: "user", text: message },
+    );
+  }
   // Reserve an assistant bubble; we fill it in as tokens arrive.
   // `addMessage` now returns a record with the bubble div,
   // the body, and a `setCopiedText` so the copy button
@@ -423,6 +468,7 @@ async function submitChat(raw) {
   const bubble = addMessage("assistant", "", null);
   const { div: bubbleDiv, body, setCopiedText } = bubble;
   let pendingCitations = null;
+  let finalAgent = null;
   let buffer = "";
   let cursor = document.createElement("span");
   cursor.className = "cursor";
@@ -431,6 +477,7 @@ async function submitChat(raw) {
   try {
     for await (const ev of streamChat(message)) {
       if (ev.type === "route") {
+        finalAgent = ev.agent;
         bubbleDiv.classList.add(`msg-agent-${ev.agent}`);
         // Insert the agent chip into the pre-built meta row
         // (in front of the copy button).
@@ -469,6 +516,25 @@ async function submitChat(raw) {
         setCopiedText(buffer);
         if (pendingCitations && pendingCitations.length > 0) {
           renderCitations(body, pendingCitations);
+        }
+        // Persist the assistant message + bump the
+        // conversation's updatedAt so the sidebar list
+        // re-sorts. Awaiting is fine: the UI is already
+        // finished rendering and IDB writes are fast.
+        if (
+          STATE.currentConversationId &&
+          window.EdgeWellStore?.store?.isAvailable?.()
+        ) {
+          await window.EdgeWellStore.store.addMessage(
+            STATE.currentConversationId,
+            {
+              role: "assistant",
+              text: buffer,
+              agent: finalAgent,
+              citations: pendingCitations || undefined,
+            },
+          );
+          await refreshConversationList();
         }
         break;
       }
@@ -934,9 +1000,247 @@ window.addEventListener("offline", () => {
   setP2p("down", "device offline");
 });
 
+/* --------------------------- THEME + SIDEBAR --------------------------- */
+
+const STATE = {
+  // Active conversation id. null means no conversation is
+  // open yet (the chat pane shows the empty state).
+  currentConversationId: null,
+  // Cached conversation list for the sidebar. Refreshed
+  // after every save / delete.
+  conversations: [],
+  // Sidebar is closed on boot; opening it renders the
+  // conversation list.
+  sidebarOpen: false,
+};
+
+const THEME_KEY = "edgewell.theme";
+const LAST_CONV_KEY = "edgewell.lastConversationId";
+
+function getStoredTheme() {
+  try {
+    const stored = localStorage.getItem(THEME_KEY);
+    if (stored === "light" || stored === "dark") return stored;
+  } catch {
+    /* localStorage may be unavailable in private mode */
+  }
+  // Fall back to the OS preference, then dark.
+  if (window.matchMedia?.("(prefers-color-scheme: light)").matches) {
+    return "light";
+  }
+  return "dark";
+}
+
+function applyTheme(theme) {
+  // `data-theme` on <html> drives the CSS variable swap.
+  // The theme button icon flips between 🌙 (when in light
+  // mode, meaning click-to-go-dark) and ☀️ (vice versa).
+  document.documentElement.dataset.theme = theme;
+  if (els.themeBtn) {
+    els.themeBtn.textContent = theme === "light" ? "\u{1F319}" : "\u{2600}\uFE0F";
+    els.themeBtn.title =
+      theme === "light" ? "Switch to dark theme" : "Switch to light theme";
+  }
+}
+
+function toggleTheme() {
+  const next =
+    (document.documentElement.dataset.theme || "dark") === "light"
+      ? "dark"
+      : "light";
+  try {
+    localStorage.setItem(THEME_KEY, next);
+  } catch {
+    /* private mode */
+  }
+  applyTheme(next);
+}
+
+els.themeBtn?.addEventListener("click", toggleTheme);
+
+/* ---------------------- CONVERSATION PERSISTENCE ---------------------- */
+
+function truncateTitle(s, max = 40) {
+  const t = (s ?? "").trim().replace(/\s+/g, " ");
+  if (t.length <= max) return t || "New chat";
+  return t.slice(0, max - 1).trimEnd() + "\u2026";
+}
+
+function formatRelativeTime(ts) {
+  if (!ts) return "";
+  const diff = Date.now() - ts;
+  if (diff < 60_000) return "just now";
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
+  if (diff < 7 * 86_400_000) return `${Math.floor(diff / 86_400_000)}d ago`;
+  return new Date(ts).toLocaleDateString();
+}
+
+async function refreshConversationList() {
+  if (!window.EdgeWellStore?.store?.isAvailable?.()) return;
+  STATE.conversations = await window.EdgeWellStore.store.listConversations();
+  renderConversationList();
+}
+
+function renderConversationList() {
+  if (!els.conversationList) return;
+  els.conversationList.innerHTML = "";
+  if (STATE.conversations.length === 0) {
+    const empty = document.createElement("li");
+    empty.className = "empty";
+    empty.textContent = "no conversations yet — send a message to start one.";
+    els.conversationList.appendChild(empty);
+    return;
+  }
+  for (const conv of STATE.conversations) {
+    const li = document.createElement("li");
+    li.className =
+      "conversation-item" +
+      (conv.id === STATE.currentConversationId ? " active" : "");
+    li.dataset.id = conv.id;
+
+    const main = document.createElement("div");
+    const title = document.createElement("div");
+    title.className = "title";
+    title.textContent = conv.title || "New chat";
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    meta.textContent = formatRelativeTime(conv.updatedAt);
+    main.append(title, meta);
+    li.appendChild(main);
+
+    const del = document.createElement("button");
+    del.className = "delete-btn";
+    del.type = "button";
+    del.setAttribute("aria-label", `Delete ${conv.title || "conversation"}`);
+    del.title = "Delete";
+    del.textContent = "\u{1F5D1}\uFE0F";
+    del.addEventListener("click", (e) => {
+      e.stopPropagation();
+      deleteConversation(conv);
+    });
+    li.appendChild(del);
+
+    li.addEventListener("click", () => switchToConversation(conv));
+    els.conversationList.appendChild(li);
+  }
+}
+
+function openSidebar() {
+  if (!els.sidebar) return;
+  STATE.sidebarOpen = true;
+  els.sidebar.hidden = false;
+  els.sidebar.setAttribute("aria-hidden", "false");
+  // Defer the open class so the transition runs from
+  // translateX(-100%) to translateX(0).
+  requestAnimationFrame(() => {
+    els.sidebar.classList.add("open");
+    if (els.sidebarBackdrop) {
+      els.sidebarBackdrop.hidden = false;
+      requestAnimationFrame(() =>
+        els.sidebarBackdrop.classList.add("open"),
+      );
+    }
+  });
+}
+
+function closeSidebar() {
+  if (!els.sidebar) return;
+  STATE.sidebarOpen = false;
+  els.sidebar.classList.remove("open");
+  els.sidebar.setAttribute("aria-hidden", "true");
+  if (els.sidebarBackdrop) {
+    els.sidebarBackdrop.classList.remove("open");
+  }
+  // Wait for the transition to finish before hiding so
+  // the slide-out is visible.
+  setTimeout(() => {
+    if (!STATE.sidebarOpen) {
+      els.sidebar.hidden = true;
+      if (els.sidebarBackdrop) els.sidebarBackdrop.hidden = true;
+    }
+  }, 220);
+}
+
+els.sidebarBtn?.addEventListener("click", openSidebar);
+els.sidebarClose?.addEventListener("click", closeSidebar);
+els.sidebarBackdrop?.addEventListener("click", closeSidebar);
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && STATE.sidebarOpen) closeSidebar();
+});
+
+els.newChatBtn?.addEventListener("click", startNewChat);
+
+async function startNewChat() {
+  const conv = await window.EdgeWellStore.store.createConversation("New chat");
+  STATE.conversations.unshift(conv);
+  STATE.currentConversationId = conv.id;
+  try {
+    localStorage.setItem(LAST_CONV_KEY, conv.id);
+  } catch {
+    /* private mode */
+  }
+  els.messages.innerHTML = "";
+  renderChatEmpty();
+  renderConversationList();
+  closeSidebar();
+  els.chatInput.focus();
+}
+
+async function switchToConversation(conv) {
+  if (!conv) return;
+  STATE.currentConversationId = conv.id;
+  try {
+    localStorage.setItem(LAST_CONV_KEY, conv.id);
+  } catch {
+    /* private mode */
+  }
+  // Clear the chat panel and re-render this conversation's
+  // messages. Loaded messages have no streaming state, so
+  // we pass `complete: true` to skip the live token cursor
+  // and render markdown directly.
+  els.messages.innerHTML = "";
+  const messages = await window.EdgeWellStore.store.getMessages(conv.id);
+  for (const m of messages) {
+    if (m.role === "user") {
+      addMessage("user", m.text);
+    } else if (m.role === "assistant") {
+      const { div, body, setCopiedText } = addMessage(
+        "assistant",
+        m.text,
+        m.agent,
+        { complete: true },
+      );
+      if (m.citations && m.citations.length > 0) {
+        renderCitations(body, m.citations);
+      }
+    }
+  }
+  if (messages.length === 0) renderChatEmpty();
+  renderConversationList();
+  els.messages.scrollTop = els.messages.scrollHeight;
+}
+
+async function deleteConversation(conv) {
+  if (!confirm(`Delete "${conv.title}"? This can't be undone.`)) return;
+  await window.EdgeWellStore.store.deleteConversation(conv.id);
+  STATE.conversations = STATE.conversations.filter((c) => c.id !== conv.id);
+  if (STATE.currentConversationId === conv.id) {
+    STATE.currentConversationId = null;
+    els.messages.innerHTML = "";
+    if (STATE.conversations.length > 0) {
+      await switchToConversation(STATE.conversations[0]);
+    } else {
+      renderChatEmpty();
+    }
+  }
+  renderConversationList();
+}
+
 /* -------------------------------- BOOT -------------------------------- */
 
 (async function boot() {
+  applyTheme(getStoredTheme());
   renderChatEmpty();
   setupIosInstallHint();
   // v3.0.2: focus the chat input on desktop only. Mobile
@@ -946,6 +1250,26 @@ window.addEventListener("offline", () => {
   // desktop layout breakpoint.
   const isDesktop = window.matchMedia?.("(min-width: 721px)").matches;
   if (isDesktop) els.chatInput.focus();
+  // Load conversation history and restore the last one.
+  if (window.EdgeWellStore?.store?.isAvailable?.()) {
+    await refreshConversationList();
+    const lastId = (() => {
+      try {
+        return localStorage.getItem(LAST_CONV_KEY);
+      } catch {
+        return null;
+      }
+    })();
+    const last = lastId
+      ? STATE.conversations.find((c) => c.id === lastId)
+      : null;
+    if (last) {
+      await switchToConversation(last);
+    } else if (STATE.conversations.length > 0) {
+      await switchToConversation(STATE.conversations[0]);
+    }
+    renderConversationList();
+  }
   await ping();
   await Promise.all([loadJournal(), loadExpenses()]);
   // Periodic health probe — also lets the P2P dot recover

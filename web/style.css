@@ -1,8 +1,11 @@
-/* EdgeWell companion web UI — v3.0.1
- * Dark theme, no framework. Layout: 3-column on desktop, tab
- * bar on mobile. Agent-coded chat bubbles. Installable as PWA. */
+/* EdgeWell companion web UI — v3.0.2
+ * Dark theme by default, light theme via [data-theme="light"]
+ * on <html>. No framework. Layout: 3-column on desktop, tab
+ * bar on mobile. Agent-coded chat bubbles. Installable as
+ * PWA. Conversation history persisted to IndexedDB. */
 
-:root {
+:root,
+[data-theme="dark"] {
   --bg: #0f1115;
   --bg-2: #14171e;
   --panel: #181b22;
@@ -24,13 +27,38 @@
   --local: #86efac;
   --peer: #7dd3fc;
 
-  --radius: 0.6rem;
-  --radius-sm: 0.4rem;
   --shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
 
   --topbar-h: 56px;
   --tabbar-h: 56px;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Light theme overrides. Semantic colors are kept but
+ * re-mapped to darker shades for contrast against the
+ * light backgrounds. */
+[data-theme="light"] {
+  --bg: #f8fafc;
+  --bg-2: #f1f5f9;
+  --panel: #ffffff;
+  --panel-2: #f1f5f9;
+  --text: #0f172a;
+  --muted: #64748b;
+  --accent: #0284c7;
+  --accent-2: #0ea5e9;
+  --good: #16a34a;
+  --warn: #d97706;
+  --bad: #dc2626;
+  --border: #e2e8f0;
+  --border-2: #cbd5e1;
+
+  --health: #2563eb;
+  --finance: #b45309;
+  --lifestyle: #7e22ce;
+  --local: #16a34a;
+  --peer: #0284c7;
+
+  --shadow: 0 6px 24px rgba(15, 23, 42, 0.12);
 }
 
 * {
@@ -961,4 +989,131 @@ code {
 }
 .toast--bad {
   border-color: var(--bad);
+}
+
+/* ---------------------- CONVERSATION SIDEBAR (v3.0.2) ------------------ */
+
+/* Drawer that slides in from the left over the journal
+ * panel. Always overlay (not inline) so it doesn't push
+ * the chat content. Width caps at 300px on desktop, goes
+ * full-width on mobile. */
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 300px;
+  max-width: 85vw;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  padding: 0.75rem;
+  gap: 0.5rem;
+  transform: translateX(-100%);
+  transition: transform 200ms ease;
+  box-shadow: var(--shadow);
+}
+.sidebar.open {
+  transform: translateX(0);
+}
+.sidebar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0.25rem;
+}
+.sidebar-head h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--text);
+}
+.sidebar-head .btn {
+  font-size: 1.2rem;
+  line-height: 1;
+  padding: 0.25rem 0.5rem;
+}
+#new-chat-btn {
+  width: 100%;
+}
+.conversation-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+.conversation-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.6rem;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.conversation-item:hover {
+  background: var(--panel-2);
+  border-color: var(--border-2);
+}
+.conversation-item.active {
+  border-color: var(--accent);
+  background: rgba(125, 211, 252, 0.08);
+}
+.conversation-item .title {
+  font-size: 0.85rem;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+}
+.conversation-item .meta {
+  font-size: 0.7rem;
+  color: var(--muted);
+  margin-top: 0.15rem;
+}
+.conversation-item .delete-btn {
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity 120ms ease, color 120ms ease, background 120ms ease;
+}
+.conversation-item:hover .delete-btn {
+  opacity: 1;
+}
+.conversation-item .delete-btn:hover {
+  color: var(--bad);
+  background: rgba(252, 165, 165, 0.1);
+}
+.sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 40;
+  opacity: 0;
+  transition: opacity 200ms ease;
+  pointer-events: none;
+}
+.sidebar-backdrop.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+@media (prefers-color-scheme: light) {
+  .sidebar-backdrop {
+    background: rgba(15, 23, 42, 0.2);
+  }
 }

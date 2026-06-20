@@ -7,7 +7,7 @@
       content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
     <meta name="theme-color" content="#0f1115" />
-    <meta name="color-scheme" content="dark" />
+    <meta name="color-scheme" content="light dark" />
     <meta
       name="description"
       content="EdgeWell — private, on-device health and finance coach."
@@ -75,6 +75,24 @@
       </div>
 
       <div class="topbar-actions">
+        <button
+          id="sidebar-btn"
+          class="btn btn--ghost"
+          type="button"
+          title="Conversations"
+          aria-label="Open conversations"
+        >
+          ≡ Chats
+        </button>
+        <button
+          id="theme-btn"
+          class="btn btn--ghost"
+          type="button"
+          title="Toggle light / dark"
+          aria-label="Toggle theme"
+        >
+          🌙
+        </button>
         <span
           id="p2p"
           class="p2p p2p--local"
@@ -296,7 +314,42 @@
     <!-- Toast region for transient feedback (install, offline, etc.) -->
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
+    <!-- Sidebar: conversation history (slides in from the left) -->
+    <aside
+      id="sidebar"
+      class="sidebar"
+      aria-label="Conversations"
+      aria-hidden="true"
+      hidden
+    >
+      <header class="sidebar-head">
+        <h3>Conversations</h3>
+        <button
+          id="sidebar-close"
+          class="btn btn--ghost"
+          type="button"
+          aria-label="Close conversations"
+        >×</button>
+      </header>
+      <button
+        id="new-chat-btn"
+        class="btn btn--primary"
+        type="button"
+      >+ New chat</button>
+      <ul
+        id="conversation-list"
+        class="conversation-list"
+        aria-live="polite"
+      ></ul>
+    </aside>
+    <div
+      id="sidebar-backdrop"
+      class="sidebar-backdrop"
+      hidden
+    ></div>
+
     <script src="markdown.js"></script>
+    <script src="store.js"></script>
     <script src="app.js"></script>
   </body>
 </html>
