@@ -59,8 +59,7 @@ const els = {
   expenseList: document.getElementById("expense-list"),
   expenseTotal: document.getElementById("expense-total"),
   expenseChart: document.getElementById("expense-chart"),
-  installBtn: document.getElementById("install-btn"),
-  tokenBtn: document.getElementById("token-btn"),
+
   toast: document.getElementById("toast"),
 
   sidebar: document.getElementById("sidebar"),
@@ -855,19 +854,7 @@ function setP2p(state, label) {
   els.p2p.title = `Routing: ${label}`;
 }
 
-els.tokenBtn.addEventListener("click", async () => {
-  const t = prompt("Paste bearer token (or leave empty to clear):", "");
-  if (t === null) return; // cancelled
-  if (t.trim() === "") {
-    setToken("");
-    toast("token cleared", "good");
-  } else {
-    setToken(t.trim());
-    toast("token saved", "good");
-  }
-  await ping();
-  await Promise.all([loadJournal(), loadExpenses()]);
-});
+
 
 
 
@@ -912,24 +899,8 @@ let deferredInstall = null;
 window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();
   deferredInstall = e;
-  // Only show the button on platforms that actually support
-  // the install prompt (Chromium browsers on desktop/Android).
-  // iOS Safari never fires this event and the button is
-  // replaced by a one-shot toast handled in the boot sequence.
-  if (!isIosSafari) els.installBtn.hidden = false;
-});
-els.installBtn.addEventListener("click", async () => {
-  if (!deferredInstall) return;
-  els.installBtn.hidden = true;
-  deferredInstall.prompt();
-  const choice = await deferredInstall.userChoice;
-  if (choice.outcome === "accepted") {
-    toast("installed — look for EdgeWell on your home screen", "good");
-  }
-  deferredInstall = null;
 });
 window.addEventListener("appinstalled", () => {
-  els.installBtn.hidden = true;
   toast("installed", "good");
 });
 
