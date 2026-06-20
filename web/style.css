@@ -693,6 +693,32 @@ code {
 .message.user .meta {
   color: rgba(255, 255, 255, 0.75);
 }
+.message.user code,
+.message.user .md-code-inline {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.message.user .md-link {
+  color: #ffffff;
+  text-decoration: underline;
+  text-decoration-color: rgba(255, 255, 255, 0.5);
+}
+.message.user .md-link:hover {
+  text-decoration-color: #ffffff;
+}
+.message.user .md-quote {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.95);
+  border-left-color: #ffffff;
+}
+.message.user .md-pre {
+  background: rgba(0, 0, 0, 0.2);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+.message.user .md-pre .md-code {
+  color: #ffffff;
+}
 .message.assistant {
   background: var(--bg-2);
   border: 1px solid var(--border);

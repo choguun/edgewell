@@ -1,4 +1,4 @@
-// EdgeWell companion web UI — v3.0.1
+// EdgeWell companion web UI — v3.1.0
 // Talks to the local companion HTTP server. Streams chat via
 // Server-Sent Events (POST + ReadableStream), surfaces the
 // multi-agent router chip, source-citations from RAG, an
