@@ -557,6 +557,17 @@ code {
   border-radius: 99px;
   padding: 0 1.25rem;
 }
+.form--chat #send-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+}
+.form--chat #send-btn .send-icon {
+  font-size: 0.8rem;
+  line-height: 1;
+  margin-bottom: 0.05rem;
+}
 
 /* -------------------------------- CHIPS & TAGS ------------------------------- */
 
@@ -1277,6 +1288,32 @@ code {
   }
   .topbar-actions #sidebar-btn .btn-icon {
     font-size: 1.1rem;
+  }
+
+  /* Collapse P2P text to a circle status badge */
+  #p2p-text {
+    display: none;
+  }
+  .p2p {
+    padding: 0.4rem;
+    aspect-ratio: 1;
+    border-radius: 50%;
+  }
+
+  /* Make send button a circle on mobile */
+  .form--chat #send-btn {
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .form--chat #send-btn .send-label {
+    display: none;
+  }
+  .form--chat #send-btn .send-icon {
+    font-size: 0.95rem;
+    margin: 0;
   }
 }
 
