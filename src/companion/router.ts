@@ -24,6 +24,64 @@ function send(res, status, body, headers = {}) {
   res.end(JSON.stringify(body));
 }
 
+/**
+ * Open a Server-Sent-Events stream on `res`. After calling this
+ * the handler writes events with `sseEvent(res, data)` and
+ * terminates with `sseEnd(res)`. Flushes headers immediately so
+ * the browser's EventSource starts receiving data on the first
+ * token instead of waiting for the keep-alive buffer.
+ *
+ * `X-Accel-Buffering: no` disables nginx response buffering when
+ * the companion is reverse-proxied; harmless otherwise.
+ */
+export function sseStart(res, extraHeaders = {}) {
+  res.statusCode = 200;
+  const headers = {
+    "content-type": "text/event-stream; charset=utf-8",
+    "cache-control": "no-cache, no-transform",
+    "connection": "keep-alive",
+    "x-accel-buffering": "no",
+    ...CORS_HEADERS,
+    ...extraHeaders,
+  };
+  for (const [k, v] of Object.entries(headers)) res.setHeader(k, v);
+  if (typeof res.flushHeaders === "function") res.flushHeaders();
+}
+
+/**
+ * Write a single SSE event. Each call emits one
+ * `data: <json>\n\n` frame. Optional `event:` line lets the
+ * client add a named listener. JSON encoding is used so the
+ * payload can carry arbitrary structured data (route, context
+ * hits, tokens).
+ *
+ * Returns `true` if the frame was written, `false` if the
+ * socket is already closed. Callers (e.g. the chat-stream
+ * route) can use the return value to short-circuit long
+ * orchestrator loops once the client has gone away.
+ */
+export function sseEvent(res, data, eventName = null) {
+  if (res.writableEnded) return false;
+  let frame = "";
+  if (eventName) frame += `event: ${eventName}\n`;
+  frame += `data: ${JSON.stringify(data)}\n\n`;
+  try {
+    return res.write(frame);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Close the SSE stream cleanly. Sends a final `done` frame so
+ * the client can flush UI state, then ends the response.
+ */
+export function sseEnd(res, finalData = null) {
+  if (res.writableEnded) return;
+  if (finalData !== null) sseEvent(res, finalData, "done");
+  res.end();
+}
+
 // CORS headers. The companion server is gated by bearer tokens;
 // CORS alone does not grant access, so allow-origin: * is safe
 // here. The bundled web UI is served from a different origin

@@ -2,6 +2,7 @@
 // (health, finance, or a general/lifestyle one) and can chain them.
 
 import type { ChatMessage, LLM } from "../llm-types.js";
+import type { RagIndex, RagSearchHit } from "../rag.js";
 
 export type RouteAgent = "health" | "finance" | "lifestyle";
 
@@ -20,6 +21,19 @@ export interface RouteResult {
   domain: string | null;
 }
 
+/**
+ * Structured events yielded by `Orchestrator.streamHandle`.
+ * The web UI (and the v3.0.1 `POST /chat/stream` SSE endpoint)
+ * consumes these to render the router chip, source citations,
+ * and token-by-token streaming reply.
+ */
+export type StreamEvent =
+  | { type: "route"; agent: RouteAgent; reason: string; domain: string | null }
+  | { type: "context"; hits: RagSearchHit[] }
+  | { type: "token"; text: string }
+  | { type: "error"; message: string }
+  | { type: "done" };
+
 export interface SpecialistAgent {
   ask(question: string, history?: ChatMessage[]): Promise<string>;
   streamAsk(question: string, history?: ChatMessage[]): AsyncIterable<string>;
@@ -30,6 +44,15 @@ export interface OrchestratorOptions {
   health: SpecialistAgent;
   finance: SpecialistAgent;
   lifestyle?: SpecialistAgent;
+  /**
+   * Optional RAG index used by `streamHandle` to emit a
+   * `context` event with the top-k hits alongside the reply.
+   * The v3.0.1 web UI uses this to show a "📎 sleep journal"
+   * source-citation line under each assistant message. Passing
+   * `null` (the default) skips the lookup so the offline test
+   * suite, which has no RAG index, stays green.
+   */
+  rag?: RagIndex | null;
 }
 
 export interface AskResult {
@@ -88,12 +111,14 @@ export class Orchestrator {
   public health: SpecialistAgent;
   public finance: SpecialistAgent;
   public lifestyle?: SpecialistAgent;
+  public rag: RagIndex | null;
 
-  constructor({ llm, health, finance, lifestyle }: OrchestratorOptions) {
+  constructor({ llm, health, finance, lifestyle, rag = null }: OrchestratorOptions) {
     this.llm = llm;
     this.health = health;
     this.finance = finance;
     this.lifestyle = lifestyle;
+    this.rag = rag;
   }
 
   async route(question: string): Promise<RouteResult> {
@@ -153,5 +178,71 @@ export class Orchestrator {
   async handle(question: string, history: ChatMessage[] = []): Promise<string> {
     const { agent, reply } = await this.ask(question, history);
     return `[${agent}] ${reply}`;
+  }
+
+  /**
+   * Streaming variant of `handle`. Yields structured events the
+   * web UI can render progressively: a `route` chip, the top RAG
+   * hits as a `context` event, then one `token` event per LLM
+   * token, and finally a `done` sentinel. Any thrown error is
+   * converted into an `error` event so the client always gets a
+   * clean stream tail. Used by `POST /chat/stream` in
+   * `src/companion/server.ts`.
+   */
+  async *streamHandle(
+    question: string,
+    history: ChatMessage[] = [],
+  ): AsyncIterable<StreamEvent> {
+    let route: RouteResult;
+    try {
+      route = await this.route(question);
+    } catch (err) {
+      yield { type: "error", message: (err as Error).message };
+      yield { type: "done" };
+      return;
+    }
+    yield {
+      type: "route",
+      agent: route.agent,
+      reason: route.reason,
+      domain: route.domain,
+    };
+    // Emit the RAG context block as its own event so the UI can
+    // show source citations without re-running search(). Only
+    // health and finance use the index today; lifestyle is LLM-only.
+    if (this.rag && (route.agent === "health" || route.agent === "finance")) {
+      try {
+        const hits = await this.rag.search(question, 3);
+        if (hits.length > 0) yield { type: "context", hits };
+      } catch {
+        // RAG lookup is best-effort; never fail the whole stream.
+      }
+    }
+    try {
+      switch (route.agent) {
+        case "health":
+          for await (const tok of this.health.streamAsk(question, history)) {
+            yield { type: "token", text: tok };
+          }
+          break;
+        case "finance":
+          for await (const tok of this.finance.streamAsk(question, history)) {
+            yield { type: "token", text: tok };
+          }
+          break;
+        default:
+          for await (const tok of this.llm.stream({
+            system: LIFESTYLE_SYSTEM,
+            user: question,
+            history,
+            maxTokens: 500,
+          })) {
+            yield { type: "token", text: tok };
+          }
+      }
+    } catch (err) {
+      yield { type: "error", message: (err as Error).message };
+    }
+    yield { type: "done" };
   }
 }

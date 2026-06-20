@@ -40,7 +40,7 @@ export function createEdgeWell(overrides = {}) {
 
   const health = new HealthAgent({ llm, rag, profile: null });
   const finance = new FinanceAgent({ llm, rag, profile: null, expenses });
-  const orchestrator = new Orchestrator({ llm, health, finance });
+  const orchestrator = new Orchestrator({ llm, health, finance, rag });
 
   return { cfg, llm, profile, journal, expenses, rag, health, finance, orchestrator };
 }

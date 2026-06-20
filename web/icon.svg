@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="EdgeWell">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#7dd3fc"/>
+      <stop offset="100%" stop-color="#38bdf8"/>
+    </linearGradient>
+    <linearGradient id="g2" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0%" stop-color="#0f1115"/>
+      <stop offset="100%" stop-color="#1f2937"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="512" height="512" rx="96" fill="url(#g2)"/>
+  <!-- Stylised "E" + heartbeat mark -->
+  <g fill="none" stroke="url(#g)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="148,128 148,384 364,384"/>
+    <polyline points="148,256 296,256"/>
+    <polyline points="148,128 364,128"/>
+  </g>
+  <path d="M196 320 L240 320 L260 280 L300 360 L330 300 L380 300"
+        fill="none" stroke="#86efac" stroke-width="22"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

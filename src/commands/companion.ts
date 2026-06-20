@@ -13,6 +13,21 @@ import { makeAnnouncer, buildServiceUrl } from "../companion/mdns.js";
 import { newSecret, signToken } from "../companion/auth.js";
 import { projectRoot } from "../config.js";
 
+/**
+ * v3.0.2: pure helper that decides whether the companion
+ * should enforce bearer-token auth based on the parsed CLI
+ * flags. Extracted so the four cases (default, `--auth=true`,
+ * `--auth=false`, `--no-auth`) can be unit-tested without
+ * spinning up an HTTP listener. Returns `true` if auth
+ * should be enabled, `false` otherwise.
+ */
+export function resolveAuthFlag(flags) {
+  const noAuthFlag =
+    flags["no-auth"] === true || flags["no-auth"] === "true";
+  const authFalse = flags.auth === false || flags.auth === "false";
+  return !(noAuthFlag || authFalse);
+}
+
 export async function companionCommand(args, ew) {
   const flags = parseFlags(args, {
     host: "127.0.0.1",
@@ -32,7 +47,14 @@ export async function companionCommand(args, ew) {
     console.error("pass --allow-privileged to bind anyway (requires root on most systems)");
     process.exit(2);
   }
-  const useAuth = flags.auth !== false && flags.auth !== "false";
+  // v3.0.2: accept both `--auth=false` and the more discoverable
+  // `--no-auth` flag. The previous version only recognized
+  // `flags.auth`, so `--no-auth` landed as an unrelated `no-auth`
+  // key in the flag bag and the user got a silent 401 on the
+  // first call. Either flag, when set, disables auth.
+  const noAuthFlag = flags["no-auth"] === true || flags["no-auth"] === "true";
+  const authFalse = flags.auth === false || flags.auth === "false";
+  const useAuth = !(noAuthFlag || authFalse);
   let secret = null;
   if (useAuth) {
     secret = process.env.EDGEWELL_COMPANION_SECRET || newSecret();

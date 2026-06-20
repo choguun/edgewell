@@ -2,36 +2,299 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#0f1115" />
+    <meta name="color-scheme" content="dark" />
+    <meta
+      name="description"
+      content="EdgeWell — private, on-device health and finance coach."
+    />
     <title>EdgeWell Companion</title>
+
+    <!-- PWA hooks. The manifest is at the same origin so a
+         phone browser pointed at the companion IP picks it up
+         and offers "Add to Home Screen". The service worker
+         caches the static shell so the page renders even when
+         the device is briefly offline. -->
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="icon.svg" />
+    <link rel="apple-touch-icon" href="icon.svg" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta name="apple-mobile-web-app-title" content="EdgeWell" />
+
     <link rel="stylesheet" href="style.css" />
   </head>
-  <body>
-    <header>
-      <h1>EdgeWell</h1>
-      <p id="status" class="muted">disconnected</p>
+
+  <body data-tab="chat">
+    <a class="skip" href="#chat-panel">Skip to chat</a>
+
+    <header class="topbar" role="banner">
+      <div class="brand">
+        <span class="logo" aria-hidden="true">
+          <svg viewBox="0 0 32 32" width="28" height="28">
+            <rect width="32" height="32" rx="7" fill="#181b22" />
+            <polyline
+              points="9,8 9,24 23,24"
+              fill="none"
+              stroke="#7dd3fc"
+              stroke-width="2.4"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <polyline
+              points="9,16 19,16"
+              fill="none"
+              stroke="#7dd3fc"
+              stroke-width="2.4"
+              stroke-linecap="round"
+            />
+            <path
+              d="M12 20 L15 20 L17 17 L20 22 L22 18 L25 18"
+              fill="none"
+              stroke="#86efac"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </span>
+        <div class="brand-text">
+          <h1>EdgeWell</h1>
+          <p class="muted tagline" id="status">
+            <span class="dot dot--pending" aria-hidden="true"></span>
+            <span id="status-text">connecting…</span>
+          </p>
+        </div>
+      </div>
+
+      <div class="topbar-actions">
+        <span
+          id="p2p"
+          class="p2p p2p--local"
+          title="Routing status: local model"
+          aria-label="Routing status"
+        >
+          <span class="dot" aria-hidden="true"></span>
+          <span id="p2p-text">local</span>
+        </span>
+        <button
+          id="install-btn"
+          class="btn btn--ghost"
+          type="button"
+          hidden
+        >
+          ⤓ Install
+        </button>
+        <button
+          id="token-btn"
+          class="btn btn--ghost"
+          type="button"
+          title="Set bearer token"
+        >
+          🔑 Token
+        </button>
+      </div>
     </header>
 
-    <main>
-      <section id="chat">
-        <h2>Chat</h2>
-        <div id="messages" aria-live="polite"></div>
-        <form id="chat-form">
-          <input id="chat-input" type="text" placeholder="Ask EdgeWell…" autocomplete="off" />
-          <button type="submit">Send</button>
+    <main class="layout">
+      <!-- LEFT: JOURNAL -->
+      <section
+        id="journal-panel"
+        class="panel panel--left"
+        data-tab-target="journal"
+        aria-label="Journal"
+      >
+        <header class="panel-head">
+          <h2>Journal</h2>
+          <span id="journal-count" class="muted small">0 entries</span>
+        </header>
+
+        <form id="journal-form" class="form">
+          <label class="sr-only" for="journal-text">New journal entry</label>
+          <textarea
+            id="journal-text"
+            name="text"
+            rows="3"
+            placeholder="Today I noticed…"
+            required
+          ></textarea>
+          <label class="sr-only" for="journal-tags">Tags</label>
+          <input
+            id="journal-tags"
+            name="tags"
+            type="text"
+            placeholder="tags (comma separated)"
+            autocomplete="off"
+          />
+          <div class="form-actions">
+            <button class="btn btn--primary" type="submit">Add entry</button>
+          </div>
+        </form>
+
+        <ul id="journal-list" class="journal-list" aria-live="polite"></ul>
+      </section>
+
+      <!-- CENTER: CHAT -->
+      <section
+        id="chat-panel"
+        class="panel panel--center"
+        data-tab-target="chat"
+        aria-label="Chat"
+      >
+        <header class="panel-head">
+          <h2>Chat</h2>
+          <span class="muted small">
+            multi-agent · <code>router → specialist → RAG</code>
+          </span>
+        </header>
+
+        <div id="demo-banner" class="demo-banner" hidden>
+          <span class="demo-banner-icon" aria-hidden="true">🧪</span>
+          <span class="demo-banner-text">
+            Demo mode — the <code>@qvac/sdk</code> isn't installed, so replies are
+            canned. Install it (<code>pnpm add @qvac/sdk</code>) for real answers.
+          </span>
+          <button
+            id="demo-banner-close"
+            class="demo-banner-close"
+            type="button"
+            aria-label="Dismiss"
+          >×</button>
+        </div>
+
+        <div id="messages" class="messages" aria-live="polite"></div>
+
+        <div class="quick-prompts" role="group" aria-label="Quick prompts">
+          <button class="chip" data-prompt="How did I sleep this week?">
+            🛌 Sleep
+          </button>
+          <button class="chip" data-prompt="What's my biggest expense category this month?">
+            💸 Budget
+          </button>
+          <button class="chip" data-prompt="Plan a 7-day workout for me">
+            🏃 Workout
+          </button>
+          <button class="chip" data-prompt="Help me stay focused today">
+            🎯 Focus
+          </button>
+        </div>
+
+        <form id="chat-form" class="form form--chat" autocomplete="off">
+          <label class="sr-only" for="chat-input">Ask EdgeWell</label>
+          <input
+            id="chat-input"
+            name="message"
+            type="text"
+            placeholder="Ask EdgeWell…"
+            autocomplete="off"
+            enterkeyhint="send"
+            required
+          />
+          <button class="btn btn--primary" type="submit" id="send-btn">
+            <span class="send-label">Send</span>
+          </button>
         </form>
       </section>
 
-      <section id="journal">
-        <h2>Journal</h2>
-        <form id="journal-form">
-          <textarea id="journal-text" placeholder="Today I noticed…" rows="3"></textarea>
-          <input id="journal-tags" type="text" placeholder="tags (comma separated)" />
-          <button type="submit">Add entry</button>
+      <!-- RIGHT: EXPENSES -->
+      <section
+        id="expenses-panel"
+        class="panel panel--right"
+        data-tab-target="expenses"
+        aria-label="Expenses"
+      >
+        <header class="panel-head">
+          <h2>Expenses</h2>
+          <span id="expense-total" class="muted small">total —</span>
+        </header>
+
+        <form id="expense-form" class="form form--inline">
+          <label class="sr-only" for="expense-amount">Amount</label>
+          <input
+            id="expense-amount"
+            name="amount"
+            type="number"
+            inputmode="decimal"
+            step="0.01"
+            min="0"
+            placeholder="0.00"
+            required
+          />
+          <label class="sr-only" for="expense-category">Category</label>
+          <input
+            id="expense-category"
+            name="category"
+            type="text"
+            list="cat-list"
+            placeholder="category"
+            autocomplete="off"
+          />
+          <datalist id="cat-list">
+            <option value="food"></option>
+            <option value="transport"></option>
+            <option value="books"></option>
+            <option value="coffee"></option>
+            <option value="rent"></option>
+            <option value="other"></option>
+          </datalist>
+          <label class="sr-only" for="expense-note">Note</label>
+          <input
+            id="expense-note"
+            name="note"
+            type="text"
+            placeholder="note (optional)"
+            autocomplete="off"
+          />
+          <div class="form-actions">
+            <button class="btn btn--primary" type="submit">Add</button>
+          </div>
         </form>
-        <ul id="journal-list"></ul>
+
+        <div id="expense-chart" class="chart" aria-hidden="true"></div>
+        <ul id="expense-list" class="expense-list" aria-live="polite"></ul>
       </section>
     </main>
+
+    <!-- MOBILE TAB BAR -->
+    <nav class="tabbar" role="tablist" aria-label="Sections">
+      <button
+        class="tab"
+        role="tab"
+        data-tab-btn="journal"
+        aria-controls="journal-panel"
+        aria-selected="false"
+      >
+        <span aria-hidden="true">📓</span><span>Journal</span>
+      </button>
+      <button
+        class="tab tab--primary"
+        role="tab"
+        data-tab-btn="chat"
+        aria-controls="chat-panel"
+        aria-selected="true"
+      >
+        <span aria-hidden="true">💬</span><span>Chat</span>
+      </button>
+      <button
+        class="tab"
+        role="tab"
+        data-tab-btn="expenses"
+        aria-controls="expenses-panel"
+        aria-selected="false"
+      >
+        <span aria-hidden="true">💰</span><span>Expenses</span>
+      </button>
+    </nav>
+
+    <!-- Toast region for transient feedback (install, offline, etc.) -->
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
     <script src="app.js"></script>
   </body>

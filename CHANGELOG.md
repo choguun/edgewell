@@ -239,3 +239,104 @@ artifacts needed to demo, evaluate, and submit the project.
 - 9 unit tests for RAG, orchestrator, P2P, stores, and CLI flags.
 - README with install, quick start, and P2P setup.
 - Sample `data/sample_health_notes.txt` for `rag ingest`.
+
+## [v3.0.2] — 2026-06-20 (companion UI upgrade)
+
+Front-end and companion-server polish around the mobile-companion
+demo path. No breaking changes to the CLI or the public TS API.
+
+- **Streaming chat over SSE.** New `POST /chat/stream` endpoint in
+  `src/companion/server.ts` writes `text/event-stream` frames for
+  `route` (agent chip), `context` (top-3 RAG hits with sources and
+  scores), per-token `token` events, `error`, and `done`. The new
+  `Orchestrator.streamHandle` in `src/agents/orchestrator.ts`
+  yields a typed `StreamEvent` stream the web UI consumes to
+  render the multi-agent router visibly. The static `/chat`
+  endpoint is unchanged for callers that still want buffered
+  replies.
+- **PWA install + offline shell.** New `web/manifest.webmanifest`,
+  `web/sw.js`, and `web/icon.svg` make the bundled UI installable
+  on iOS/Android and keep the page rendering when the device is
+  briefly offline. The header now exposes an `⤓ Install` button
+  wired to `beforeinstallprompt`. The service worker caches the
+  shell (`index.html`, `app.js`, `style.css`, `manifest`, `icon`)
+  and bypasses API routes so `/chat`, `/journal`, and `/expenses`
+  always go through the page's own token-aware fetch.
+- **Three-panel UI.** Rewrote `web/index.html`, `web/style.css`,
+  and `web/app.js` into a 3-column layout (Journal · Chat ·
+  Expenses) on desktop and a tab-bar layout on mobile (< 720 px).
+  New: expense panel with last-7-days inline bar chart, quick-
+  prompt chips under the chat input, a P2P status dot in the
+  header (`local` / `peer` / `fallback` / `down`), toast for
+  transient feedback, and a details disclosure under each
+  assistant message that lists the RAG sources.
+- **HEAD support for the static handler.** Pre-existing bug:
+  `curl -I` against the bundled PWA assets returned 404 because
+  the static route was only registered for `GET`. Now registered
+  for both `GET` and `HEAD`, so link-prefetch, the PWA install
+  probe, and `curl -I` all see the same content-type / length
+  headers the browser expects.
+- **Tests.** `test/chat-stream.test.ts` adds 9 unit tests covering
+  `Orchestrator.streamHandle` (route → context → tokens → done,
+  error conversion for both routing and downstream LLM failures,
+  no-context behavior for the lifestyle branch) and the
+  `/chat/stream` SSE endpoint (frame format, auth gate, 400 on
+  missing body, 200 on a valid bearer token).
+  `test/health-and-headers.test.ts` adds 11 unit tests covering
+  the v3.0.2 polish: enhanced `/health` (profile, model, P2P
+  state, counts), graceful degradation when stores throw,
+  `Cache-Control` on GET and HEAD, `sseEvent` return value,
+  and the consistent auth gate across all methods (`GET` /
+  `HEAD` / `POST` on `/journal`, `/expenses`, `/chat/stream`).
+- **Sweep fixes (v3.0.2 hardens the E2E).**
+  - **XSS in citation renderer.** Replaced `innerHTML` with
+    `textContent` + `createElement` so a journal entry
+    containing `<script>` cannot inject markup into the source
+    citation list under an assistant reply.
+  - **Real P2P status in the header.** `/health` now exposes
+    `p2p`, `model`, `delegateModel`, `profile`, and `counts`;
+    the web UI's P2P badge probes the peer and flips between
+    `local` / `peer` / `fallback` / `down` instead of
+    hardcoding `local`.
+  - **Static handler is now LAST.** `r.add("GET" /^\/(.*)$/)`
+    used to match `/chat/stream` before its real route, so a
+    `curl -I /chat/stream` returned the SPA shell. Reordered
+    so the static handler is registered after every authed
+    API route, plus added explicit GET/HEAD handlers for
+    `/chat/stream` that return 401 (no token) or 405 (with
+    token). All routes now have consistent auth across
+    methods.
+  - **HEAD on authed routes enforces auth.** New
+    `addGetWithHead` helper wraps a handler so the same auth
+    check runs for GET and HEAD, and the HEAD body is dropped
+    per RFC 9110. `curl -I /journal` without a token now
+    returns 401, not 200 + index.html.
+  - **SSE abort on client disconnect.** `/chat/stream` now
+    listens for `req.on("close")` and short-circuits the
+    orchestrator loop the moment the user navigates away.
+    `sseEvent` returns a boolean so the loop can also stop
+    when the socket write fails.
+  - **Empty states everywhere.** The chat pane now shows a
+    centered "No messages yet" with icon + title + sub
+    (removed on first send). The journal and expenses lists
+    share a single `renderEmptyState` helper.
+  - **iOS install hint.** iOS Safari never fires
+    `beforeinstallprompt`; the page now shows a one-shot
+    toast on first user interaction with the share-sheet
+    instructions.
+  - **Online / offline detection.** The status line and P2P
+    badge now reflect `navigator.onLine` transitions
+    immediately, instead of waiting for the 15 s health
+    probe.
+  - **Auto-focus chat input on desktop only.** Mobile
+    keyboards no longer pop up the moment the page loads.
+  - **Bar chart empty days** now render as a 2 px line at
+    the bottom of the chart instead of a 4 px pill that
+    looked like real data.
+  - **Quick-prompt chips disable** while a message is
+    sending, in lockstep with the send button.
+  - **Cursor always removed** on stream end (success, error,
+    or network drop) — no more forever-blinking caret.
+  - **Token-stream rendering is O(1) per token.** Single
+    `Text` node + cursor, append into the node's `.data`
+    instead of repeated `textContent +=` reads.

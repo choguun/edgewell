@@ -14,7 +14,18 @@ export async function unloadModel() {
 
 export async function completion({ history, stream = false } = {}) {
   const last = [...(history ?? [])].reverse().find((m) => m?.role === "user");
-  const text = `[stub completion for: ${last?.content ?? ""}]`;
+  const q = (last?.content ?? "").trim();
+  // v3.0.2: friendlier placeholder. The previous
+  // `[stub completion for: <input>]` looked like a debug
+  // dump in the chat UI. This one tells the user the
+  // system is in demo mode and points them at the SDK
+  // install command. The router still picks an agent
+  // before this returns, so the user can see multi-agent
+  // routing working even with no model loaded.
+  const text =
+    `I'm running in demo mode — the @qvac/sdk isn't installed, so I can't run real inference. ` +
+    `I'd normally answer "${q}" with a local LLM. ` +
+    `Install the SDK (\`pnpm add @qvac/sdk\`) to enable real replies.`;
   if (stream) {
     return {
       tokenStream: (async function* () {

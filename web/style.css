@@ -1,156 +1,823 @@
-/* EdgeWell companion web UI. Plain CSS, no framework. */
+/* EdgeWell companion web UI — v3.0.1
+ * Dark theme, no framework. Layout: 3-column on desktop, tab
+ * bar on mobile. Agent-coded chat bubbles. Installable as PWA. */
 
 :root {
   --bg: #0f1115;
+  --bg-2: #14171e;
   --panel: #181b22;
+  --panel-2: #1f232c;
   --text: #e7ecf2;
   --muted: #8a93a4;
   --accent: #7dd3fc;
+  --accent-2: #38bdf8;
   --good: #86efac;
   --warn: #fbbf24;
   --bad: #fca5a5;
   --border: #232733;
+  --border-2: #2c3140;
+
+  /* Agent-coded tokens. Used by .chip--agent-* and .msg-agent-*. */
+  --health: #60a5fa;
+  --finance: #fbbf24;
+  --lifestyle: #c084fc;
+  --local: #86efac;
+  --peer: #7dd3fc;
+
+  --radius: 0.6rem;
+  --radius-sm: 0.4rem;
+  --shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+
+  --topbar-h: 56px;
+  --tabbar-h: 56px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 * {
   box-sizing: border-box;
 }
 
+html,
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  padding: 0;
   background: var(--bg);
   color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   line-height: 1.5;
-}
-
-header {
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid var(--border);
+  min-height: 100vh;
+  /* Layout grid: header / main / tabbar. The main row is a
+   * flex container; the tab bar is only painted on mobile. */
   display: flex;
-  align-items: baseline;
-  gap: 1rem;
+  flex-direction: column;
 }
 
-header h1 {
-  margin: 0;
-  font-size: 1.4rem;
+body {
+  /* Reserve space for the topbar. On desktop, the tab bar
+   * is hidden via media query so no extra padding is needed. */
+  padding-top: var(--topbar-h);
+  padding-bottom: 0;
+}
+
+a {
+  color: var(--accent);
+}
+
+code {
+  font-family: "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.85em;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0 0.3em;
   color: var(--accent);
 }
 
 .muted {
   color: var(--muted);
-  font-size: 0.9rem;
 }
 
-main {
+.small {
+  font-size: 0.85rem;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip {
+  position: absolute;
+  top: -40px;
+  left: 8px;
+  background: var(--accent);
+  color: #002030;
+  padding: 0.4rem 0.7rem;
+  border-radius: var(--radius-sm);
+  z-index: 100;
+}
+.skip:focus {
+  top: 8px;
+}
+
+/* ------------------------------- TOPBAR ------------------------------- */
+
+.topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--topbar-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0 1rem;
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--border);
+  z-index: 10;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+}
+.brand .logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.brand h1 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: var(--accent);
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+.tagline {
+  margin: 0;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* ------------------------------- P2P DOT ------------------------------ */
+
+.p2p {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+}
+.p2p .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--local);
+  box-shadow: 0 0 0 2px rgba(134, 238, 172, 0.15);
+}
+.p2p--peer .dot {
+  background: var(--peer);
+  box-shadow: 0 0 0 2px rgba(125, 211, 252, 0.15);
+}
+.p2p--fallback .dot {
+  background: var(--warn);
+  box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.15);
+}
+.p2p--down .dot {
+  background: var(--bad);
+  box-shadow: 0 0 0 2px rgba(252, 165, 165, 0.15);
+}
+.p2p--pending .dot {
+  background: var(--muted);
+  box-shadow: none;
+}
+
+#status .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+#status .dot--ok {
+  background: var(--good);
+}
+#status .dot--bad {
+  background: var(--bad);
+}
+#status .dot--pending {
+  background: var(--muted);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+/* -------------------------------- BUTTONS ----------------------------- */
+
+.btn {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.4rem 0.75rem;
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 120ms ease, transform 80ms ease, filter 120ms ease;
+}
+.btn:hover {
+  filter: brightness(1.1);
+}
+.btn:active {
+  transform: translateY(1px);
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btn--primary {
+  background: var(--accent);
+  color: #002030;
+  border-color: transparent;
+  font-weight: 600;
+}
+.btn--ghost {
+  background: transparent;
+}
+.btn--primary:hover {
+  filter: brightness(1.05);
+}
+
+/* -------------------------------- LAYOUT ------------------------------ */
+
+.layout {
   display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 1rem;
-  padding: 1rem;
-  max-width: 1100px;
+  grid-template-columns: 1fr 2fr 1fr;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  flex: 1;
+  min-height: 0;
+  max-width: 1400px;
+  width: 100%;
   margin: 0 auto;
 }
 
-@media (max-width: 720px) {
-  main {
-    grid-template-columns: 1fr;
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.75rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.panel-head h2 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* On wide screens the left and right panels keep the chat from
+ * spreading too thin. Below 1100px the right expenses panel
+ * drops so the chat can breathe. Below 720px the layout flips
+ * to a single panel controlled by the tab bar. */
+@media (max-width: 1100px) {
+  .layout {
+    grid-template-columns: 1fr 2fr;
+  }
+  .panel--right {
+    display: none;
+  }
+  body[data-tab="expenses"] .panel--right {
+    display: flex;
+    grid-column: 1 / -1;
+  }
+  body[data-tab="expenses"] .panel--left,
+  body[data-tab="expenses"] .panel--center {
+    display: none;
   }
 }
 
-section {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 0.6rem;
-  padding: 1rem;
+@media (max-width: 720px) {
+  .layout {
+    grid-template-columns: 1fr;
+    padding: 0.5rem;
+    padding-bottom: calc(var(--tabbar-h) + var(--safe-bottom) + 0.5rem);
+  }
+  body[data-tab="chat"] .panel--left,
+  body[data-tab="chat"] .panel--right {
+    display: none;
+  }
+  body[data-tab="journal"] .panel--center,
+  body[data-tab="journal"] .panel--right {
+    display: none;
+  }
+  body[data-tab="expenses"] .panel--left,
+  body[data-tab="expenses"] .panel--center {
+    display: none;
+  }
+  .panel {
+    min-height: 60vh;
+  }
+  .tabbar {
+    display: flex;
+  }
+}
+
+/* -------------------------------- FORMS ------------------------------- */
+
+.form {
   display: flex;
   flex-direction: column;
-  min-height: 320px;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+.form input[type="text"],
+.form input[type="number"],
+.form textarea {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.6rem;
+  font: inherit;
+  width: 100%;
+}
+.form input:focus,
+.form textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(125, 211, 252, 0.2);
+}
+.form textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+.form-actions {
+  display: flex;
+  gap: 0.4rem;
+  justify-content: flex-end;
+}
+.form--inline {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.form--inline > * {
+  flex: 1 1 80px;
+  min-width: 0;
+}
+.form--inline .form-actions {
+  flex: 0 0 auto;
+  width: 100%;
+}
+.form--chat {
+  flex-direction: row;
+  gap: 0.4rem;
+  align-items: stretch;
+  margin-top: 0.5rem;
+}
+.form--chat input {
+  flex: 1;
 }
 
-section h2 {
-  margin: 0 0 0.5rem;
-  font-size: 1.1rem;
-  color: var(--accent);
+/* -------------------------------- CHIPS ------------------------------- */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  background: var(--bg-2);
+  color: var(--text);
+  border: 1px solid var(--border-2);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.chip:hover {
+  background: var(--panel-2);
+  border-color: var(--accent);
+}
+.chip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
-#messages {
+.quick-prompts {
+  display: flex;
+  gap: 0.35rem;
+  overflow-x: auto;
+  padding: 0.25rem 0;
+  margin: 0.25rem 0;
+  scrollbar-width: thin;
+}
+.quick-prompts::-webkit-scrollbar {
+  height: 4px;
+}
+.quick-prompts::-webkit-scrollbar-thumb {
+  background: var(--border-2);
+  border-radius: 2px;
+}
+
+/* ----------------------------- AGENT CHIPS ---------------------------- */
+
+.chip--agent {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  text-transform: lowercase;
+  letter-spacing: 0.3px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 1px solid currentColor;
+  background: transparent;
+  color: var(--muted);
+  cursor: default;
+}
+.chip--agent::before {
+  content: "●";
+  font-size: 0.7em;
+}
+.chip--health {
+  color: var(--health);
+}
+.chip--finance {
+  color: var(--finance);
+}
+.chip--lifestyle {
+  color: var(--lifestyle);
+}
+
+/* ------------------------------- MESSAGES ----------------------------- */
+
+.messages {
   flex: 1;
   overflow-y: auto;
-  margin-bottom: 0.5rem;
-  padding-right: 0.25rem;
+  padding: 0.25rem 0.25rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-height: 0;
 }
-
 .message {
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.5rem;
-  margin-bottom: 0.4rem;
-  max-width: 90%;
+  max-width: 92%;
+  padding: 0.55rem 0.7rem;
+  border-radius: var(--radius);
+  font-size: 0.95rem;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  position: relative;
 }
-
+.message .meta {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.25rem;
+  font-size: 0.7rem;
+  color: var(--muted);
+}
 .message.user {
   background: var(--accent);
   color: #002030;
   align-self: flex-end;
+  border-bottom-right-radius: 0.2rem;
 }
-
+.message.user .meta {
+  color: rgba(0, 32, 48, 0.7);
+}
 .message.assistant {
-  background: var(--border);
-  color: var(--text);
-}
-
-#chat-form,
-#journal-form {
-  display: flex;
-  gap: 0.4rem;
-  flex-wrap: wrap;
-}
-
-input[type="text"],
-textarea {
-  flex: 1;
-  background: var(--bg);
-  color: var(--text);
+  background: var(--bg-2);
   border: 1px solid var(--border);
-  border-radius: 0.4rem;
-  padding: 0.5rem 0.6rem;
-  font: inherit;
+  align-self: flex-start;
+  border-bottom-left-radius: 0.2rem;
 }
-
-button {
+.message.assistant.msg-agent-health {
+  border-left: 3px solid var(--health);
+}
+.message.assistant.msg-agent-finance {
+  border-left: 3px solid var(--finance);
+}
+.message.assistant.msg-agent-lifestyle {
+  border-left: 3px solid var(--lifestyle);
+}
+.message.error {
+  background: rgba(252, 165, 165, 0.1);
+  border: 1px solid var(--bad);
+  color: var(--bad);
+  align-self: flex-start;
+}
+.message .cursor {
+  display: inline-block;
+  width: 7px;
+  height: 1em;
   background: var(--accent);
-  color: #002030;
-  border: 0;
-  border-radius: 0.4rem;
-  padding: 0.5rem 0.9rem;
-  font-weight: 600;
+  vertical-align: text-bottom;
+  margin-left: 2px;
+  animation: blink 1s steps(2) infinite;
+}
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+.citations {
+  margin-top: 0.4rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+  border-top: 1px dashed var(--border-2);
+  padding-top: 0.4rem;
+}
+.citations summary {
   cursor: pointer;
-}
-
-button:hover {
-  filter: brightness(1.05);
-}
-
-#journal-list {
+  user-select: none;
   list-style: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.citations summary::before {
+  content: "📎";
+}
+.citations summary::-webkit-details-marker {
+  display: none;
+}
+.citations ol {
+  margin: 0.4rem 0 0;
+  padding-left: 1.2rem;
+}
+.citations li {
+  margin-bottom: 0.2rem;
+}
+.citations .src {
+  color: var(--accent);
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.85em;
+}
+.citations .score {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  margin-left: 0.3rem;
+}
+
+/* ----------------------------- JOURNAL LIST --------------------------- */
+
+.journal-list,
+.expense-list {
+  list-style: none;
+  margin: 0;
   padding: 0;
-  margin: 0.6rem 0 0;
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
+  overflow-y: auto;
+  min-height: 0;
+  flex: 1;
+}
+.journal-list li,
+.expense-list li {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.6rem;
+  font-size: 0.9rem;
+}
+.journal-list .tags,
+.expense-list .tags {
+  display: block;
+  margin-top: 0.3rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+.empty {
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-style: italic;
+  padding: 0.5rem 0;
 }
 
-#journal-list li {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 0.4rem;
-  padding: 0.5rem 0.6rem;
+/* Demo-mode banner. Painted at the top of the chat panel
+ * when /health reports `demo: true` (i.e. the local vendor
+ * stub is answering instead of a real model). Dismissable
+ * with × — the dismissal is per-session only. */
+.demo-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.55rem 0.7rem;
+  margin-bottom: 0.5rem;
+  background: rgba(251, 191, 36, 0.08);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  border-radius: var(--radius-sm);
+  color: var(--warn);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+.demo-banner-icon {
+  font-size: 1rem;
+  line-height: 1.2;
+  flex-shrink: 0;
+}
+.demo-banner-text {
+  flex: 1;
+  min-width: 0;
+}
+.demo-banner code {
+  color: var(--warn);
+  background: rgba(251, 191, 36, 0.1);
+  border-color: rgba(251, 191, 36, 0.3);
+}
+.demo-banner-close {
+  background: transparent;
+  color: var(--warn);
+  border: 0;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0.25rem;
+  align-self: flex-start;
+}
+.demo-banner-close:hover {
+  filter: brightness(1.2);
+}
+
+/* Chat-pane empty state. Centered icon + title + sub line.
+ * Only painted when the messages container is otherwise
+ * empty (see renderChatEmpty in app.js). */
+.chat-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  margin: auto 0;
+  padding: 2rem 1rem;
+  text-align: center;
+  font-style: normal;
+  list-style: none;
+}
+.chat-empty-icon {
+  font-size: 2.4rem;
+  opacity: 0.7;
+}
+.chat-empty-title {
+  color: var(--text);
+  font-weight: 600;
   font-size: 0.95rem;
 }
-
-#journal-list .tags {
-  display: block;
-  margin-top: 0.25rem;
+.chat-empty-sub {
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: 0.85rem;
+  max-width: 24ch;
+  line-height: 1.4;
+}
+
+/* ----------------------------- EXPENSE CHART -------------------------- */
+
+.chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 64px;
+  margin: 0.5rem 0;
+  padding: 0.25rem 0.4rem;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.chart-bar {
+  flex: 1;
+  background: linear-gradient(180deg, var(--accent) 0%, var(--accent-2) 100%);
+  border-radius: 2px 2px 0 0;
+  min-height: 2px;
+  position: relative;
+  transition: opacity 200ms ease, height 200ms ease;
+}
+.chart-bar:hover {
+  opacity: 0.8;
+}
+/* v3.0.2: an empty day used to render as a 4px pill that
+ * looked like real data. Now it draws a flat 2px line at the
+ * bottom of the chart so the user can tell at a glance which
+ * days had no spend. */
+.chart-bar[data-empty="true"] {
+  background: var(--border);
+  min-height: 2px;
+  height: 2px !important;
+  align-self: flex-end;
+}
+.chart-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.65rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  margin: -0.25rem 0.25rem 0.25rem;
+}
+
+.expense-list .amt {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+.expense-list .cat {
+  font-size: 0.7rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-left: 0.3rem;
+}
+.expense-list .when {
+  display: block;
+  color: var(--muted);
+  font-size: 0.7rem;
+  margin-top: 0.2rem;
+}
+
+/* -------------------------------- TAB BAR ----------------------------- */
+
+.tabbar {
+  display: none;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(var(--tabbar-h) + var(--safe-bottom));
+  padding-bottom: var(--safe-bottom);
+  background: var(--bg-2);
+  border-top: 1px solid var(--border);
+  z-index: 10;
+  justify-content: space-around;
+  align-items: stretch;
+}
+.tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+.tab[aria-selected="true"] {
+  color: var(--accent);
+}
+.tab span:first-child {
+  font-size: 1.3rem;
+}
+
+/* -------------------------------- TOAST ------------------------------- */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--tabbar-h) + 1rem + var(--safe-bottom));
+  transform: translateX(-50%);
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius);
+  padding: 0.6rem 1rem;
+  box-shadow: var(--shadow);
+  font-size: 0.85rem;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 200ms ease, transform 200ms ease;
+  z-index: 20;
+  max-width: 90vw;
+}
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.toast--good {
+  border-color: var(--good);
+}
+.toast--bad {
+  border-color: var(--bad);
 }
