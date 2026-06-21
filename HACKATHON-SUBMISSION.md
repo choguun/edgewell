@@ -1,11 +1,7 @@
-# EdgeWell v3.0.1 — Hackathon Submission
+# EdgeWell — Hackathon Submission
 
 > **Project:** EdgeWell — Private, on-device personal health + finance coach
 > **Track:** General Purpose (also runs on Mobile and Tinkerer profiles)
-> **SDK:** `@qvac/sdk` (linked via `link:./vendor/qvac-sdk`)
-> **Repo:** `/Users/choguun/Documents/workspaces/cool-projects/edgewell`
-> **Document version:** 3.0.1
-> **Last verified against source:** 2026-06-18
 
 ---
 
@@ -40,29 +36,13 @@ So EdgeWell also covers the **Mobile** and **Tinkerer** profiles without any
 code fork — only a profile switch (`edgewell profiles apply <name>`) and a
 restart.
 
-## 3. Mandatory Requirements Checklist
 
-| Requirement                                | Status | Evidence (real file paths)                                                                 |
-|--------------------------------------------|:------:|--------------------------------------------------------------------------------------------|
-| **Built on QVAC SDK**                      |   ✅   | `package.json` line `"@qvac/sdk": "link:./vendor/qvac-sdk"`; wrapper at `src/qvac.ts` (`EdgeWellLLM` calls `sdk.loadModel` / `sdk.completion`); model catalog at `src/registry.ts` |
-| **Form-factor constraint respected**       |   ✅   | `src/profiles.ts` (`PROFILES` map + `pickProfile`); runtime switch via `edgewell profiles apply mobile|tinkerer|desktop`; `tinkerer` uses 64-dim vector + 300-char chunks + 15 s P2P timeout |
-| **Reproducible from clean machine**        |   ✅   | This file (§ 4); `package.json` pins `packageManager: pnpm@11.6.0` and `engines.node: ">=22.17"`; vendor SDK at `vendor/qvac-sdk/` matches the runtime contract |
-| **Complete artifacts**                     |   ✅   | `README.md`, `AGENTS.md`, `docs/ARCHITECTURE.md`, `docs/DEPLOYMENT.md`, `docs/PERFORMANCE.md`, `docs/SECURITY-MODEL.md`, `HACKATHON-SUBMISSION.md`, plus `artifacts/`, `demo/`, `social/`, `docs/diagrams/` siblings (§ 12) |
-| **Tests pass without the SDK**             |   ✅   | `pnpm test` (script `"test": "node --import tsx --test test/*.test.ts"` in `package.json`); offline stub at `src/commands/ask.ts` |
-| **CLI runs without the SDK**               |   ✅   | `bin/edgewell.js` shim → `bin/edgewell.ts` via `tsx`; `src/qvac.ts` defers `import("@qvac/sdk")` until first call |
-| **Multi-agent orchestration**              |   ✅   | `src/agents/orchestrator.ts` (router prompt + keyword fallback); `src/agents/{health,finance,sleep,nutrition,hydration,activity}.ts` |
-| **Tool calling**                           |   ✅   | `src/tool-agent.ts` (parses `<tool name="...">{json}</tool>`); tools at `src/tools.ts` (`calculator`, `datetime`, `search_kb`, `add_expense`, `add_journal`) |
-| **P2P delegation with fallback**           |   ✅   | `src/p2p.ts` (`DelegatingLLM` peer-first → local fallback); `src/peer-mesh.ts` (`PeerMesh.healthy / stream / broadcast / consensus`) |
-| **Multimodal ingest (image / audio / sensors / text)** | ✅ | `src/multimodal/index.ts` (`ingestPath` dispatcher); `src/multimodal/{image,audio,sensors}.ts` |
-| **Privacy: no telemetry, at-rest crypto**  |   ✅   | `src/crypto.ts` (scrypt + AES-256-GCM); `src/redact.ts` (PII redactor); `docs/SECURITY-MODEL.md` §"Telemetry exfiltration" |
-| **Companion HTTP server with auth + CORS** |   ✅   | `src/companion/{server,router,auth,mdns}.ts`; `web/` static UI; HMAC bearer tokens; refuses ports < 1024 unless `--allow-privileged` |
-
-## 4. How judges reproduce
+## 3. How judges reproduce
 
 All commands below are **copy-paste runnable** on a clean macOS / Linux box.
 The only prerequisite is Node.js 22.17+; pnpm is bootstrapped by Corepack.
 
-### 4.0 Fastest path — web UI in one command
+### 3.0 Fastest path — web UI in one command
 
 ```bash
 git clone <repo-url> edgewell && cd edgewell
@@ -76,49 +56,6 @@ into the chat form. Use only on `127.0.0.1`; the default `--host 0.0.0.0`
 listens on every interface. Equivalents: `--auth=false` or
 `EDGEWELL_COMPANION_SECRET=… pnpm dev companion --port 8787 --print-token`.
 
-### 4.1 Install Node and pnpm
-
-```bash
-corepack enable
-corepack prepare pnpm@11.6.0 --activate
-
-node --version   # expect: v22.17.x or newer in the 22.x line
-pnpm --version   # expect: 11.6.0
-```
-
-### 4.2 Clone and build
-
-```bash
-git clone <repo-url> edgewell
-cd edgewell
-pnpm install        # installs @qvac/sdk via link:./vendor/qvac-sdk
-pnpm build          # runs `tsc -p tsconfig.build.json`, writes dist/
-pnpm typecheck      # tsc --noEmit, catches drift without emitting
-```
-
-### 4.3 Run the test suite (no SDK required)
-
-```bash
-pnpm test
-# `node --import tsx --test test/*.test.ts`
-```
-
-Expected output: a TAP stream from `node --test` with a green summary line
-(`# tests`, `# pass`, `# fail`). The captured tail at
-`artifacts/test-summary.txt` shows `tests 445 / pass 445 / fail 0` from the
-2026-06-18 run. All agent tests run against the in-process stub; they assert
-`ask` returns a non-empty string and `streamAsk` yields at least one token
-(per `AGENTS.md` §"Testing the agents").
-
-### 4.4 Smoke-test the CLI
-
-```bash
-# Self-bootstrapping shim path (no build needed)
-node bin/edgewell.js help
-
-# Compiled-output path (after `pnpm build`)
-node dist/bin/edgewell.js help
-```
 
 A green path is:
 
@@ -137,7 +74,7 @@ node bin/edgewell.js expense add 250 food
 node bin/edgewell.js expense add 80 transport
 ```
 
-### 4.5 Ask a routed question (streams tokens once a model is loaded)
+### 3.1 Ask a routed question (streams tokens once a model is loaded)
 
 ```bash
 # Online (with @qvac/sdk installed)
@@ -153,30 +90,8 @@ In offline mode the orchestrator still classifies the question (the bracket
 prefix `[finance]`, `[health]`, `[lifestyle]` is always printed) so judges can
 verify the routing logic without a model.
 
-### 4.6 Start the companion server
 
-```bash
-# Zero-setup (no token prompt — local dev only)
-pnpm dev companion --port 8787 --no-auth
-
-# Authed (LAN pairing)
-EDGEWELL_COMPANION_SECRET=$(cat ~/.edgewell/secret 2>/dev/null || echo "") \
-  node bin/edgewell.js companion --host 0.0.0.0 --port 8787
-```
-
-Mint a token for the authed path, or rotate the secret:
-
-```bash
-node bin/edgewell.js companion --print-token   # one-shot token print
-node bin/edgewell.js rotate-secret             # writes ~/.edgewell/secret, mode 0600
-```
-
-Open `http://<this-host>:8787/` in a browser. With `--no-auth` the bundled
-`web/app.js` loads straight into the chat form; otherwise it auto-prompts
-for a token on the first `401`. The companion serves the bundled `web/` UI
-on the same port — no separate static server needed.
-
-### 4.7 Run the bench command
+### 3.2 Run the bench command
 
 ```bash
 node bin/edgewell.js bench
@@ -186,7 +101,7 @@ node bin/edgewell.js bench
 The bench output is reproducible; the JSON form is saved to
 `artifacts/bench.json` by the sibling artifact-builder (see § 12).
 
-### 4.8 Optional: serve a larger model on a peer
+### 3.3 Optional: serve a larger model on a peer
 
 On the **peer** (laptop or workstation with the bigger model):
 
@@ -207,22 +122,9 @@ EDGEWELL_P2P_PORT=8787 \
 If the peer is unreachable, `DelegatingLLM` (in `src/p2p.ts`) emits a
 structured `warn` log and the stderr line
 `[p2p] peer <host>:<port> unreachable — falling back to local model`, then
-streams from the local model. This silent fallback was made observable in
-v3.0.1.
+streams from the local model. This silent fallback was made observable
 
-### 4.9 Verify reproducibility checksum
-
-```bash
-git ls-files | sort | tee artifacts/file-list.txt | wc -l
-
-find src docs README.md AGENTS.md package.json \
-  -type f \( -name '*.ts' -o -name '*.md' -o -name '*.json' \) \
-  | sort | xargs shasum -a 256 | tee artifacts/source-sha256.txt
-```
-
-`artifacts/source-sha256.txt` is the canonical reproducibility fingerprint.
-
-## 5. Hardware Setup
+## 4. Hardware Setup
 
 EdgeWell is deliberately hardware-agnostic. The **profile** is the only thing
 that changes between a phone, a Raspberry Pi, and a workstation. The CLI
@@ -236,7 +138,7 @@ binary is the same artefact for all three.
 | `tinkerer`| Raspberry Pi 4 / Pi 5                   | 4 GB    | 64         | 300 chars | 15 s        | `0.0.0.0:8787` |
 | `desktop` | MacBook / Linux laptop / workstation   | 16 GB   | 256        | 600 chars | 5 s         | `127.0.0.1:8788` (P2P off by default) |
 
-### 5.2 Concrete configuration A — MacBook / Linux laptop (≥ 16 GB RAM)
+### 4.1 Concrete configuration A — MacBook / Linux laptop (≥ 16 GB RAM)
 
 ```bash
 # Node 22.17, pnpm 11.6.0
@@ -249,7 +151,7 @@ node bin/edgewell.js ask "Suggest a 7-day plan to improve sleep"
 node bin/edgewell.js serve --port 8787 &
 ```
 
-### 5.3 Concrete configuration B — Raspberry Pi 4 / 5 (4 GB)
+### 4.2 Concrete configuration B — Raspberry Pi 4 / 5 (4 GB)
 
 ```bash
 # Flash Raspberry Pi OS Lite (64-bit), then:
@@ -272,7 +174,7 @@ embedder (about 25 % faster than the 128-dim default per
 `docs/PERFORMANCE.md`) and gives a generous 15 s P2P timeout so a slow home
 LAN doesn't trip the fallback.
 
-### 5.4 Concrete configuration C — Android phone (Termux)
+### 4.3 Concrete configuration C — Android phone (Termux)
 
 ```bash
 # In Termux (F-Droid build)
@@ -293,7 +195,7 @@ On a phone the companion server is the most useful surface — point the
 desktop browser at `http://<phone-ip>:8787/` after `edgewell companion
 --host 0.0.0.0 --port 8787`.
 
-### 5.5 Switching profiles at runtime
+### 4.4 Switching profiles at runtime
 
 ```bash
 node bin/edgewell.js profiles list
@@ -302,7 +204,7 @@ node bin/edgewell.js profiles apply mobile
 # v3.0.1: writes ~/.edgewell/state.json (persists across restarts)
 ```
 
-### 5.6 Hardware Proof
+### 4.5 Hardware Proof
 
 A sibling artifact-builder script generates `artifacts/hardware-proof.txt`
 after the bench run. That file records, per profile, the model id, the
@@ -322,7 +224,7 @@ by `tinkerer` and `desktop`; the relevant `vector.dim`, `rag.chunkSize`,
 immediately under each profile key (no line numbers cited here so this
 claim stays correct as the file is edited).
 
-## 6. Architecture
+## 5. Architecture
 
 Full reference: `docs/ARCHITECTURE.md`. One-screen summary:
 
@@ -393,11 +295,11 @@ Three concrete data flows:
    picks image / audio / sensor / text pipeline by extension → emitted text
    is appended to RAG and/or the journal.
 
-## 7. Multi-agent orchestration & tool calling
+## 6. Multi-agent orchestration & tool calling
 
 Reference: `AGENTS.md`, `src/agents/orchestrator.ts`, `src/tool-agent.ts`.
 
-### 7.1 The orchestrator
+### 6.1 The orchestrator
 
 `Orchestrator.route(question)` in `src/agents/orchestrator.ts` runs two
 strategies in order:
@@ -431,7 +333,7 @@ Each agent owns one short `SYSTEM` prompt at the top of its module
 `src/agents/nutrition.ts`, `src/agents/hydration.ts`, `src/agents/activity.ts`).
 The lifestyle default's `LIFESTYLE_SYSTEM` lives in `orchestrator.ts`.
 
-### 7.2 The seven specialists
+### 6.2 The seven specialists
 
 | Specialist           | Module                                  | Best for                                                  |
 |----------------------|-----------------------------------------|-----------------------------------------------------------|
@@ -447,7 +349,7 @@ Every agent calls `this.llm.prompt(...)` or `this.llm.stream(...)`. The
 agents don't know whether the LLM is local (`EdgeWellLLM`) or delegating
 (`DelegatingLLM`) — the indirection is the whole point.
 
-### 7.3 The tool-calling loop
+### 6.3 The tool-calling loop
 
 `ToolAgent` (in `src/tool-agent.ts`) wraps a normal agent and adds a
 tool-calling loop:
@@ -469,7 +371,7 @@ The registered tools (in `src/tools.ts`) are:
 | `add_expense`| `{ amount: number, category: string }`    | Appends a row to `data/expenses.jsonl`                  |
 | `add_journal`| `{ text: string }`                        | Appends an entry to `data/journal.jsonl`                |
 
-### 7.4 v3.0.1 hardening of the tool loop
+### 6.4 hardening of the tool loop
 
 Two failure modes that used to be silent are now surfaced to the model so
 it can self-correct:
@@ -487,11 +389,11 @@ A worked showcase of the loop — calculator → search_kb → add_journal,
 including a malformed-call round and a stuck-loop early-stop — lives at
 `demo/multimodal-tool-showcase.log` (sibling artifact).
 
-## 8. P2P & peer mesh
+## 7. P2P & peer mesh
 
 Reference: `src/p2p.ts`, `src/peer-mesh.ts`.
 
-### 8.1 DelegatingLLM — peer-first with local fallback
+### 7.1 DelegatingLLM — peer-first with local fallback
 
 `DelegatingLLM` (in `src/p2p.ts`) is constructed when `cfg.p2p.enabled`
 is true and is **transparent to the agents** — they call
@@ -507,7 +409,7 @@ is true and is **transparent to the agents** — they call
 The agents never see the fallback — they only see "tokens streamed in."
 This is why the existing agent tests are unaffected by the P2P flag.
 
-### 8.2 PeerMesh — health, stream, broadcast, consensus
+### 7.2 PeerMesh — health, stream, broadcast, consensus
 
 `PeerMesh` (in `src/peer-mesh.ts`) wraps a list of `PeerClient`s with a
 single async surface:
@@ -524,7 +426,7 @@ single async surface:
 winner plus the vote share. For long answers the broadcast view is still
 returned via `peers` so the caller can pick by length instead.
 
-### 8.3 Two-device demo
+### 7.3 Two-device demo
 
 Peer (laptop, the bigger model):
 
@@ -554,7 +456,7 @@ artifact). The transcript shows:
 - a deliberately-down second peer timing out and being skipped;
 - the consensus tally for a short factual question.
 
-## 9. Innovation
+## 8. Innovation
 
 Seven concrete novel angles, each cited to the file that does the work:
 
@@ -603,11 +505,11 @@ Seven concrete novel angles, each cited to the file that does the work:
    `loadConfig()` already understands. No runtime `#ifdef`, no compile-time
    fork.
 
-## 10. Performance
+## 9. Performance
 
 Reference: `docs/PERFORMANCE.md`.
 
-### 10.1 The `bench` command
+### 9.1 The `bench` command
 
 `edgewell bench` runs a short prompt through the local LLM three times and
 prints tokens/s. It is the fastest way to compare profiles before
@@ -625,7 +527,7 @@ node bin/edgewell.js bench
 A JSON form of the same numbers, with profile + model + chunk + vector
 metadata, is saved to `artifacts/bench.json` by the sibling artifact-builder.
 
-### 10.2 Cross-profile bench with `edgewell bench-profile`
+### 9.2 Cross-profile bench with `edgewell bench-profile`
 
 `edgewell bench-profile` is the cross-profile cousin of `edgewell bench`: it
 runs the same three micro-operations — `rag.search`, `Orchestrator.route`,
@@ -638,7 +540,7 @@ machine-readable form is captured in `artifacts/bench-profile.json`; the
 human-readable transcript in `artifacts/bench-profile.txt` (both produced
 `# EdgeWell v3.0.1 hackathon artifact — produced 2026-06-18`).
 
-### 10.3 Numbers from `docs/PERFORMANCE.md`
+### 9.3 Numbers from `docs/PERFORMANCE.md`
 
 | Path                                      | Cost                                | Pi 4           | Desktop CPU    |
 |-------------------------------------------|-------------------------------------|----------------|----------------|
@@ -650,7 +552,7 @@ human-readable transcript in `artifacts/bench-profile.txt` (both produced
 | Real QVAC inference (Pi 4)                | 50–200 tokens/s                     | ✅             | n/a            |
 | Real QVAC inference (desktop CPU)         | 200–800 tokens/s                    | n/a            | ✅             |
 
-### 10.4 P2P load distribution
+### 9.4 P2P load distribution
 
 `DelegatingLLM` tries the peer first via `PeerClient.stream()`. If the
 peer yields at least one token, the local model never runs.
@@ -667,11 +569,11 @@ The `tinkerer` profile extends `p2p.timeoutMs` to 15 s (vs 8 s on mobile,
 (DHCP, Wi-Fi reassociation) and shorter timeouts cause unnecessary
 fallbacks. See `src/profiles.ts`.
 
-## 11. Model usage & Psy coverage
+## 10. Model usage & Psy coverage
 
 Reference: `src/registry.ts`, `src/profiles.ts`.
 
-### 11.1 The model catalog
+### 10.1 The model catalog
 
 `src/registry.ts` exports `MODELS`, a curated, frozen list of QVAC model
 identifiers with `family`, `size`, `quant`, `tier`, `ramGb`, `offline`, and
@@ -689,7 +591,7 @@ optional `domain` metadata:
 Helpers: `describeModel(id)`, `modelExists(id)`, `listModels()`,
 `pickModel({ tier, domain, maxRamGb })`.
 
-### 11.2 Where each model is used
+### 10.2 Where each model is used
 
 | Profile   | Local model (`EDGEWELL_MODEL`)    | Peer / delegate model                       |
 |-----------|-----------------------------------|---------------------------------------------|
@@ -714,7 +616,7 @@ per-call. For a future per-call policy, the registry's
 `src/registry.ts`.
 
 
-### 11.3 Multimodal captioning / transcription via the same SDK
+### 10.3 Multimodal captioning / transcription via the same SDK
 
 `src/multimodal/image.ts` and `src/multimodal/audio.ts` accept a caller-
 injected `captionFn` / `transcribeFn`. When the QVAC SDK exposes a vision
@@ -723,7 +625,7 @@ or speech model, the same `await import("@qvac/sdk")` path used by
 default is an offline-friendly placeholder so the pipeline works without
 network or model installs.
 
-### 11.4 Psy showcase command — `edgewell psy`
+### 10.4 Psy showcase command — `edgewell psy`
 
 `edgewell psy` lists every Psy-family model, classifies three representative
 mental-health questions through the orchestrator's `domain=medical` hint,
@@ -748,205 +650,3 @@ the showcase.
 ```bash
 node dist/bin/edgewell.js psy      # no SDK needed
 ```
-
-
-## 12. Artifact Index
-
-| Path                                          | Generated by        | Purpose                                                          |
-|-----------------------------------------------|---------------------|------------------------------------------------------------------|
-| `README.md`                                   | repo                | One-page entry; install + quick start                            |
-| `HACKATHON-SUBMISSION.md`                     | this file           | Canonical judge-facing submission                                |
-| `artifacts/bench.json`                        | artifact-builder    | Structured output of `edgewell bench` (profile × model × tok/s)  |
-| `artifacts/bench-profile.json`                | `edgewell bench-profile --json` | Cross-profile medians (mobile / tinkerer / desktop)     |
-| `artifacts/bench-profile.txt`                 | `edgewell bench-profile` | Human-readable per-profile table                                |
-| `artifacts/hardware-proof.txt`                | artifact-builder    | Profile knobs + tokens/s, one line per profile                   |
-| `artifacts/test-summary.txt`                  | `pnpm test` capture | TAP summary of the unit + integration suite                      |
-| `artifacts/orchestrator-trace.txt`            | artifact-builder    | Worked routing trace over 12 sample questions                    |
-| `artifacts/psy-routing.log`                   | `edgewell psy`      | Live Psy catalog + domain-aware routing transcript (45 lines)   |
-| `artifacts/agents-manifest.json`              | static              | Machine-readable list of agents + tools                          |
-| `artifacts/source-sha256.txt`                 | artifact-builder    | Reproducibility fingerprint of the source tree                   |
-| `artifacts/file-list.txt`                     | `git ls-files`      | Exact list of tracked files                                      |
-| `artifacts/companion-smoke.txt`               | recorded run        | Companion boot + `/health` curl                                  |
-| `artifacts/edgewell-help.txt`                 | `edgewell help`     | Top-level help output                                            |
-| `artifacts/edgewell-command-list.txt`         | `edgewell command-list` | Full 140-command registry                                    |
-| `artifacts/edgewell-info.txt`                 | `edgewell info`     | `version: 3.0.1` snapshot                                       |
-| `artifacts/README.md`                         | doc                 | Per-file index of every artifact (15 files)                      |
-| `demo/demo-script.md`                         | doc                 | Step-by-step demo script for a recorded video                    |
-| `demo/multimodal-tool-showcase.log`           | recorded run        | Tool-calling showcase incl. malformed-call + stuck-loop round    |
-| `demo/peer-mesh-demo.log`                     | recorded run        | Worked PeerMesh `healthy / stream / broadcast / consensus` trace |
-| `demo/showcase-compiled.txt`                  | recorded run        | Raw stdout of `edgewell showcase`                                |
-| `demo/showcase-test-run.txt`                  | `pnpm test` filtered to showcase | TAP output of the 5 showcase unit tests (5/5 ✔)         |
-| `demo/recording.cast`                         | recorded run        | Asciinema v2 cast (90 seconds)                                   |
-| `demo/recording.html`                         | doc                 | Self-contained HTML player embedding the cast                    |
-| `demo/recording-poster.svg`                   | doc                 | 400×300 SVG poster for the recording                             |
-| `demo/HARDWARE.md`                            | doc                 | Hardware proof document (3 devices, commands, criteria)         |
-| `demo/video-readme.md`                        | doc                 | Demo-video package index                                         |
-| `social/build-in-public.md`                   | doc                 | Discord / Keet / Twitter thread outline                          |
-| `social/innovation-pitch.md`                  | doc                 | 90-second pitch blurb                                            |
-| `social/twitter-thread.md`                    | doc                 | 9-tweet X thread with CTA                                       |
-| `social/keet-pitch.md`                        | doc                 | ~250-word Keet pitch                                             |
-| `social/keet-channel-post.md`                 | doc                 | Keet room post                                                   |
-| `social/discord-channel-post.md`              | doc                 | Discord-flavored channel post                                    |
-| `social/linkedin-post.md`                     | doc                 | Professional LinkedIn post                                       |
-| `social/community-faq.md`                     | doc                 | 12-Q FAQ for community voters                                    |
-| `social/one-liners.md`                        | doc                 | 10 taglines + hero-image directions                              |
-| `social/demo-narration.md`                    | doc                 | 60-second voice-over script                                      |
-| `social/JUDGES-ONE-PAGER.md`                  | doc                 | Printable one-page summary (post-review add)                     |
-| `social/VOTING-CARD.md`                       | doc                 | Markdown fallback for `vote-card.svg` (post-review add)         |
-| `social/vote-card.svg`                        | doc                 | 800×400 community vote share card (post-review add)              |
-| `social/CONTRIBUTOR-LADDER.md`                | doc                 | 5-rung contributor ladder (post-review add)                     |
-| `social/SPONSOR-PACK.md`                      | doc                 | Sponsor pitch (post-review add)                                 |
-| `social/build-in-public-launch.md`            | doc                 | D+0 launch post (post-review add)                               |
-| `docs/diagrams/architecture.mmd`              | doc                 | Mermaid source for the architecture diagram                      |
-| `docs/diagrams/architecture.txt`              | doc                 | Pure-ASCII architecture fallback                                 |
-| `docs/diagrams/router-flow.mmd`               | doc                 | Router → specialist sequence diagram                             |
-| `docs/diagrams/peer-mesh.mmd`                 | doc                 | Peer-mesh fan-out + consensus diagram                            |
-| `docs/diagrams/multimodal-pipeline.mmd`       | doc                 | Image / audio / sensor ingest paths                              |
-| `docs/diagrams/profile-apply.mmd`             | doc                 | Three form-factor profiles side-by-side                          |
-| `docs/diagrams/README.md`                     | doc                 | Diagram index with render hints                                  |
-| `docs/ARCHITECTURE.md`                        | doc                 | Full architecture reference                                      |
-| `docs/DEPLOYMENT.md`                          | doc                 | Per-form-factor deployment guide                                 |
-| `docs/PERFORMANCE.md`                         | doc                 | Performance characteristics of v3.0.0 hot paths                  |
-| `docs/SECURITY-MODEL.md`                      | doc                 | Threat model + mitigations                                       |
-| `docs/COMMANDS.md`                            | doc                 | Command reference (rotate-secret, journal, etc.)                |
-| `docs/ROADMAP.md`                             | doc                 | v3.0.0 roadmap                                                   |
-| `docs/PLUGINS.md`                             | doc                 | Plugin author guide                                              |
-| `docs/MIGRATION-2-to-3.md`                    | doc                 | 2.x → 3.0.0 migration guide                                      |
-| `AGENTS.md`                                   | doc                 | Specialist reference + extension how-to                          |
-
-### 12.1 Sample `artifacts/agents-manifest.json`
-
-The agents manifest is generated at build time and pinned to the commit:
-
-```json
-{
-  "version": "3.0.1",
-  "agents": [
-    { "id": "health",    "module": "src/agents/health.ts",    "systemPromptId": "HEALTH_SYSTEM" },
-    { "id": "finance",   "module": "src/agents/finance.ts",   "systemPromptId": "FINANCE_SYSTEM" },
-    { "id": "sleep",     "module": "src/agents/sleep.ts",     "systemPromptId": "SLEEP_SYSTEM" },
-    { "id": "nutrition", "module": "src/agents/nutrition.ts", "systemPromptId": "NUTRITION_SYSTEM" },
-    { "id": "hydration", "module": "src/agents/hydration.ts", "systemPromptId": "HYDRATION_SYSTEM" },
-    { "id": "activity",  "module": "src/agents/activity.ts",  "systemPromptId": "ACTIVITY_SYSTEM" },
-    { "id": "lifestyle", "module": "src/agents/orchestrator.ts", "systemPromptId": "LIFESTYLE_SYSTEM" }
-  ],
-  "tools": ["calculator", "datetime", "search_kb", "add_expense", "add_journal"],
-  "profiles": ["mobile", "tinkerer", "desktop"],
-  "models": {
-    "local":   { "mobile": "LLAMA_3_2_1B_INST_Q4_0", "tinkerer": "LLAMA_3_2_1B_INST_Q4_0", "desktop": "LLAMA_3_1_8B_INST_Q4_K_M" },
-    "delegate":{ "mobile": "LLAMA_3_1_8B_INST_Q4_K_M", "tinkerer": "LLAMA_3_1_8B_INST_Q4_K_M", "desktop": "MEDPSY_4B_INST_Q4_K_M" }
-  }
-}
-```
-
-## 13. Build in Public
-
-Full 12-post thread outline lives at `social/build-in-public.md` (D+0 repo
-→ D+21 submission). One update per day across Discord (Tether / QVAC),
-Keet (project room), and Twitter / X (`@Tether_to`, `@QVAC_`). The Keet
-room doubles as the community issue-tracker during the judging window.
-
-## 14. Compliance & Disclaimer
-
-### 14.1 Health disclaimer
-
-The Health agent is **educational**. It is not a medical device and does
-not provide diagnoses. For urgent or severe symptoms, contact a licensed
-clinician or local emergency services. This disclaimer is appended to every
-`HEALTH_SYSTEM` prompt at `src/agents/health.ts` and surfaced verbatim by
-`Orchestrator.handle()` replies tagged `[health]`.
-
-### 14.2 Finance disclaimer
-
-The Finance agent is **not financial advice**. The
-`FINANCE_SYSTEM` prompt ends with `Note: not financial advice.` and the
-bracket-prefixed `[finance]` reply inherits it.
-
-### 14.3 Data stays on the device
-
-Everything EdgeWell needs lives under the data directory configured in
-`EDGEWELL_DATA_DIR` (default `./data`):
-
-- `data/journal.jsonl` — free-form journal entries
-- `data/expenses.jsonl` — amount + category rows
-- `data/profile.json` — name, goals, baseline numbers
-- `data/rag/chunks.json` — local lexical RAG index
-- `data/rag/vectors.json` — local vector RAG index (v3.0.0+)
-- `~/.edgewell/secret` — companion HMAC secret (mode `0600`)
-- `~/.edgewell/state.json` — last applied form-factor profile
-
-Nothing leaves the device unless you explicitly point the P2P client at a
-remote peer. Even then, only the prompt and tokens cross the network —
-there is no analytics, no telemetry, no upstream LLM.
-
-### 14.4 No telemetry, reproducible offline
-
-`docs/SECURITY-MODEL.md` §"Telemetry exfiltration": EdgeWell ships
-**no telemetry**. No analytics, no error reporting, no automatic updates.
-The full build + test + bench loop (§ 4) runs offline; the only network
-touchpoints are the explicit `serve` (peer) and the optional companion
-client, both of which are user-initiated.
-
-### 14.5 Reporting vulnerabilities
-
-Email `security@edgewell.local` (placeholder) or open a private issue on
-GitHub. EdgeWell follows responsible disclosure: a fix is published before
-the report goes public.
-
----
-
-## Appendix A — File-path index
-
-| Claim                                                              | File                                                        | Line(s)            |
-|--------------------------------------------------------------------|-------------------------------------------------------------|--------------------|
-| Project description                                                 | `README.md`                                                 | 1–10               |
-| v3.0.1 hardening notes                                              | `README.md`                                                 | "What's new in v3.0.1" |
-| Node ≥ 22.17 requirement                                            | `package.json`                                              | `engines.node`     |
-| pnpm pin                                                            | `package.json`                                              | `packageManager`   |
-| `@qvac/sdk` link                                                    | `package.json`                                              | `dependencies`     |
-| `build` / `test` scripts                                            | `package.json`                                              | `scripts`          |
-| CLI shim → tsx                                                      | `bin/edgewell.js`                                           | 1–30               |
-| Router prompt + keyword fallback                                    | `src/agents/orchestrator.ts`                                | `ROUTER_SYSTEM`, `parseRoute` |
-| Specialist contract                                                 | `src/agents/orchestrator.ts`                                | `SpecialistAgent`  |
-| Tool-calling loop                                                   | `src/tool-agent.ts`                                         | `ToolAgent.ask`    |
-| Tool registry                                                      | `src/tools.ts`                                              | `TOOLS`            |
-| P2P peer-first + local fallback                                     | `src/p2p.ts`                                                | `DelegatingLLM`    |
-| PeerMesh healthy / stream / broadcast / consensus                   | `src/peer-mesh.ts`                                          | methods            |
-| Profile knobs                                                       | `src/profiles.ts`                                           | `PROFILES`         |
-| Model catalog                                                       | `src/registry.ts`                                           | `MODELS`           |
-| Multimodal dispatcher                                               | `src/multimodal/index.ts`                                   | `ingestPath`       |
-| At-rest encryption                                                  | `src/crypto.ts`                                             | scrypt + AES-256-GCM |
-| PII redactor                                                        | `src/redact.ts`                                             | email/phone/Thai ID/SSN/IPv4 |
-| Snapshot sign / verify                                              | `src/commands/snapshot-sign.ts`, `src/commands/snapshot-verify.ts` | both                |
-| Performance numbers                                                 | `docs/PERFORMANCE.md`                                       | tables             |
-| Threat model                                                        | `docs/SECURITY-MODEL.md`                                    | table              |
-| Deployment per profile                                              | `docs/DEPLOYMENT.md`                                        | Mobile / Tinkerer / Desktop |
-| Architecture overview                                               | `docs/ARCHITECTURE.md`                                      | "High-level"       |
-
-## Appendix B — Glossary
-
-- **Delegate model** — the model that runs on a peer (`EDGEWELL_P2P_HOST`).
-  EdgeWell's client tries the peer first and falls back to the local model.
-- **Form-factor profile** — a frozen config override applied at startup;
-  changes model id, chunk size, vector dim, P2P timeout, and companion host.
-- **Hybrid RAG** — lexical TF-IDF hits fused with vector cosine hits via
-  reciprocal rank, then re-ranked by a bigram overlap score.
-- **Lifestyle default** — the catch-all branch in `Orchestrator.ask()` that
-  uses `LIFESTYLE_SYSTEM` directly with the LLM (no specialist object).
-- **Peer mesh** — a `PeerMesh` wrapping a list of `PeerClient`s with health
-  probes, latency-ordered streaming, broadcast, and majority-vote consensus.
-- **Psy family** — `MEDPSY_*` entries in `src/registry.ts`; medical-specialised
-  QVAC models tagged `domain: "medical"`.
-- **Specialist** — a small class implementing `ask` + `streamAsk` plus a
-  `SYSTEM` prompt; owned by one file under `src/agents/`.
-- **Stub** — the offline-friendly fallback when `@qvac/sdk` is not installed.
-  Routing still runs; the reply is replaced by a one-line stub prefixed by
-  the chosen agent tag.
-- **Tool** — a named, schema-validated function in `src/tools.ts` invokable
-  via `<tool name="...">{json}</tool>` from a model reply.
-
----
-
-*End of submission. Total length target: 600–900 lines; every command above
-is runnable against the in-tree vendor SDK stub (`vendor/qvac-sdk/`) so the
-reproduction path works even before the real SDK is published.*
