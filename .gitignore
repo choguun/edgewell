@@ -24,3 +24,4 @@ uat-*.json
 uat-*/
 REVIEW.md
 /.npm-cache
+*.apk
