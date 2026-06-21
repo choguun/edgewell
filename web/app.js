@@ -213,12 +213,285 @@ async function api(path, init = {}) {
 /* --------------------------- STREAMING CHAT --------------------------- */
 
 /**
+ * Local "smart" responder for the Android APK / demo build.
+ *
+ * Inside the APK there is no real @qvac/sdk runtime, so the
+ * fake-server returns a canned "running in demo mode" reply for
+ * everything. That is correct for arbitrary questions, but the
+ * chat also surfaces quick-prompt chips like *"How did I sleep
+ * this week?"* and *"What's my biggest expense category this
+ * month?"* which are exactly the questions the local IndexedDB
+ * already has enough data to answer.
+ *
+ * This generator yields the same SSE event shape (`route`,
+ * `context`, `token`, `done`) as the real `/chat/stream`, so
+ * the rest of `submitChat` can treat it identically. It only
+ * fires when `isNativeApp` is true; on the desktop companion
+ * we keep using the real server, which routes to a live
+ * orchestrator + LLM.
+ */
+async function* localDemoStreamChat(message) {
+  const agent = localRouteAgent(message);
+  yield { type: "route", agent };
+  yield { type: "context", hits: [] };
+
+  let reply;
+  try {
+    if (agent === "health" && /\bsleep|\bslept|\bwoke|\bnap\b|\bbed\b/i.test(message)) {
+      reply = await localSleepReply(message);
+    } else if (
+      agent === "finance" ||
+      /\bexpense|\bbudget|\bspend|\bspending|\bsaving|\bmoney|\bdebt|\bincome/i.test(message)
+    ) {
+      reply = await localExpenseReply(message);
+    } else if (/\bmood|\benergy|\bstress|\banxious|\btired|\bjournal/i.test(message)) {
+      reply = await localMoodReply(message);
+    } else {
+      reply = localFallbackReply(message, agent);
+    }
+  } catch (err) {
+    reply = `I couldn't read your local data just now (${err.message}). Try again or check the Journal / Expenses panels on the side.`;
+  }
+
+  // Stream word-by-word so the user sees the typing effect.
+  const tokens = reply.split(/(\s+)/).filter(Boolean);
+  for (const t of tokens) {
+    yield { type: "token", text: t };
+    await new Promise((r) => setTimeout(r, 10));
+  }
+  yield { type: "done" };
+}
+
+/**
+ * Keyword router that mirrors the fallback in
+ * `src/agents/orchestrator.ts` and the regex set in
+ * `web/fake-server.js`. Kept local so the demo responder
+ * picks the same chip color the real server would.
+ */
+function localRouteAgent(question) {
+  const q = String(question ?? "").toLowerCase();
+  if (
+    /symptom|sleep|exercise|diet|medication|pain|stress|mood|health|headache|fever|tired|anxious|depress|insomnia|therapy|panic|mental|psych/.test(
+      q,
+    )
+  ) {
+    return "health";
+  }
+  if (
+    /money|budget|expense|saving|debt|income|price|cost|spend|spending|thb|usd|baht|dollar|salary/.test(
+      q,
+    )
+  ) {
+    return "finance";
+  }
+  return "lifestyle";
+}
+
+/**
+ * "How did I sleep this week?" — pull journal entries from
+ * IndexedDB, filter to the last 7 days, keep entries that
+ * mention sleep, parse `7.5h` style hour counts, and report
+ * an average + verdict. Mirrors `src/commands/sleep-stats.ts`
+ * so the numbers match the CLI.
+ */
+async function localSleepReply(question) {
+  const SHORT = 6.5;
+  const LONG = 9.5;
+  const SEVERE = 5;
+
+  const r = await api("/journal?limit=500");
+  const entries = Array.isArray(r?.entries) ? r.entries : [];
+  const now = Date.now();
+  const sevenDaysAgo = now - 7 * 86400 * 1000;
+
+  const recent = entries.filter((e) => {
+    if (!e?._ts) return false;
+    const t = new Date(e._ts).getTime();
+    return Number.isFinite(t) && t >= sevenDaysAgo && t <= now + 60 * 1000;
+  });
+
+  if (recent.length === 0) {
+    return (
+      `I don't see any journal entries from the last 7 days yet. ` +
+      `Add a note like *"Slept 7.5h, woke refreshed"* and tag it \`sleep\` ` +
+      `— I'll be able to summarise your week from there.`
+    );
+  }
+
+  const sleepEntries = recent.filter((e) => {
+    const tags = (e.tags ?? []).map((t) => String(t).toLowerCase());
+    if (tags.includes("sleep")) return true;
+    return /\bsleep|\bslept|\bwoke|\bnap\b|\bbed\b/i.test(String(e.text ?? ""));
+  });
+
+  if (sleepEntries.length === 0) {
+    return (
+      `I checked ${recent.length} journal entr${recent.length === 1 ? "y" : "ies"} ` +
+      `from the last 7 days and didn't find any tagged \`sleep\` or mentioning sleep. ` +
+      `Try logging tonight with a tag — *"slept 7.5h"* parses cleanly.`
+    );
+  }
+
+  const HOURS_RE = /(\d+(?:\.\d+)?)\s*h(?:ours?|rs?)?\b/i;
+  const hours = sleepEntries
+    .map((e) => {
+      const m = String(e.text ?? "").match(HOURS_RE);
+      return m ? Number(m[1]) : null;
+    })
+    .filter((n) => n !== null && Number.isFinite(n) && n > 0 && n < 24);
+
+  if (hours.length === 0) {
+    return (
+      `I found ${sleepEntries.length} sleep-related entr${
+        sleepEntries.length === 1 ? "y" : "ies"
+      } this week but couldn't pull an hour count from the text. ` +
+      `Try writing it as *"slept 7.5h"* so I can compute your average.`
+    );
+  }
+
+  const total = hours.reduce((a, b) => a + b, 0);
+  const avg = total / hours.length;
+  let verdict;
+  let tip;
+  if (avg < SEVERE) {
+    verdict = "severely sleep-deprived";
+    tip = "Please prioritise rest — under five hours is harmful.";
+  } else if (avg < SHORT) {
+    verdict = "short";
+    tip = "Try going to bed 30 minutes earlier this week.";
+  } else if (avg > LONG) {
+    verdict = "long";
+    tip = "Oversleeping can be a sign of poor sleep quality. Aim for 7–9h.";
+  } else {
+    verdict = "on target";
+    tip = "Keep the same bedtime and wake-up routine.";
+  }
+
+  const nights = hours
+    .map((h) => "▮".repeat(Math.max(1, Math.min(20, Math.round(h)))))
+    .join(" ");
+  const nightWord = hours.length === 1 ? "night" : "nights";
+
+  return [
+    `Across **${hours.length}** ${nightWord} you logged this week, you averaged **${avg.toFixed(1)} hours** of sleep (${total.toFixed(1)}h total).`,
+    `That's **${verdict}**. ${tip}`,
+    `Nights: ${nights}`,
+  ].join("\n\n");
+}
+
+/**
+ * "What's my biggest expense category this month?" — read the
+ * expense log from IndexedDB, group by category, report top
+ * category + share. Mirrors the logic the CLI `expenses stats`
+ * command uses.
+ */
+async function localExpenseReply(question) {
+  const r = await api("/expenses?limit=500");
+  const items = Array.isArray(r?.expenses) ? r.expenses : [];
+  const now = Date.now();
+  const monthAgo = now - 30 * 86400 * 1000;
+
+  const recent = items.filter((e) => {
+    if (!e?._ts) return false;
+    const t = new Date(e._ts).getTime();
+    return Number.isFinite(t) && t >= monthAgo && t <= now + 60 * 1000;
+  });
+
+  if (recent.length === 0) {
+    return (
+      `No expenses logged in the last 30 days. Add a few on the right-hand ` +
+      `panel and I'll summarise your biggest category.`
+    );
+  }
+
+  const byCategory = new Map();
+  let total = 0;
+  for (const e of recent) {
+    const cat = String(e.category ?? "other");
+    const amt = Number(e.amount) || 0;
+    byCategory.set(cat, (byCategory.get(cat) ?? 0) + amt);
+    total += amt;
+  }
+  const sorted = [...byCategory.entries()].sort((a, b) => b[1] - a[1]);
+  const top = sorted[0];
+  const avgPerDay = total / 30;
+
+  const lines = [
+    `Across **${recent.length}** expenses in the last 30 days you spent **${total.toFixed(2)}** total (~${avgPerDay.toFixed(2)}/day).`,
+    `Your biggest category is **${top[0]}** at **${top[1].toFixed(2)}** (${((top[1] / total) * 100).toFixed(0)}% of spend).`,
+  ];
+  if (sorted.length > 1) {
+    lines.push(
+      `Other categories: ${sorted
+        .slice(1, 4)
+        .map(([c, v]) => `${c} ${v.toFixed(2)}`)
+        .join(", ")}.`,
+    );
+  }
+  return lines.join("\n\n");
+}
+
+/**
+ * Lightweight mood / energy summary so the *"Help me stay
+ * focused today"* and similar chips return something useful
+ * even without an LLM.
+ */
+async function localMoodReply(question) {
+  const r = await api("/journal?limit=500");
+  const entries = Array.isArray(r?.entries) ? r.entries : [];
+  const withMood = entries.filter((e) => Number.isFinite(Number(e.mood)));
+  if (withMood.length === 0) {
+    return (
+      `I see ${entries.length} journal entr${
+        entries.length === 1 ? "y" : "ies"
+      } but none have a mood score yet. ` +
+      `When you log an entry, add a 1–5 mood and I'll be able to spot your trends.`
+    );
+  }
+  const moods = withMood.map((e) => Number(e.mood));
+  const avg = moods.reduce((a, b) => a + b, 0) / moods.length;
+  const last = moods[moods.length - 1];
+  return (
+    `Your last ${moods.length} mood-tagged entries average **${avg.toFixed(1)}/5** ` +
+    `(most recent: **${last}/5**). Keep logging — long-term trends need at least a week of data.`
+  );
+}
+
+/**
+ * Final fallback for questions the local responder can't
+ * handle (no LLM, no relevant local data). Keeps the
+ * honest "demo mode" disclaimer but routes it through the
+ * chip + context event so the UI looks the same as a real
+ * answer.
+ */
+function localFallbackReply(question, agent) {
+  const q = String(question ?? "").trim();
+  const label = agent || "lifestyle";
+  return (
+    `I'm running in demo mode — the @qvac/sdk isn't running real inference inside this APK, ` +
+    `so I can't give a live answer to "${q}". ` +
+    `The router picked the **[${label}]** specialist. ` +
+    `Install the real SDK and rebuild with the on-device runtime to enable local LLM replies.`
+  );
+}
+
+/**
  * POST a chat message to /chat/stream and parse the SSE
  * response. EventSource doesn't support POST bodies, so we
  * use fetch + ReadableStream and split on the SSE frame
  * boundary (`\n\n`). Yields each parsed event object.
  */
 async function* streamChat(message) {
+  // In the Android APK we serve the fake companion from the
+  // service worker, but the fake-server doesn't know how to
+  // answer "How did I sleep this week?" from IndexedDB. We
+  // do — short-circuit to the local responder so quick-
+  // prompt chips return real numbers instead of the demo
+  // banner.
+  if (isNativeApp) {
+    yield* localDemoStreamChat(message);
+    return;
+  }
   const res = await fetchWithTimeout(`${SERVER}/chat/stream`, {
     method: "POST",
     headers: headers({ accept: "text/event-stream" }),
