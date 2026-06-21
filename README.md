@@ -9,7 +9,7 @@ Designed for the **General Purpose** track of the QVAC hackathon, but
 the same code base can run on phones and SBCs by switching the model
 ID at runtime.
 
-## Features (v1)
+## Features
 
 - **Health agent** with strict non-diagnostic disclaimer, 7-day plan
   generation, and RAG over your journal entries and notes.
@@ -32,7 +32,12 @@ P2P-fallback trace without installing the live QVAC SDK. The
 captured transcript lives at `demo/showcase-compiled.txt` and is
 the primary evidence artifact for the hackathon submission.
 
-## What's new in v2.0.0
+## Changelog
+
+A rolling log of capability additions, organised by theme. The
+project keeps every prior surface area intact as it evolves.
+
+### Tools, schema, and security
 
 - Model registry with curated QVAC model metadata.
 - Hand-rolled JSON-schema validator and ready-made schemas.
@@ -46,10 +51,7 @@ the primary evidence artifact for the hackathon submission.
 - New CLI subcommands: `profile`, `doctor`, `config`, `models`,
   `plugins`, `redact`, `summary`, `tags`, `eval`, `bench`, `snapshot`.
 
-## What's new in v3.0.0 (alpha)
-
-v3.0.0 is the "Senses & Memory" release. It adds three new
-capabilities and keeps every v2.0.0 surface area intact.
+### Senses and memory
 
 - **Vector memory** alongside the existing TF-IDF RAG. Pluggable
   embedder (hash by default, real QVAC embeddings in production).
@@ -75,17 +77,17 @@ capabilities and keeps every v2.0.0 surface area intact.
 
 ## Hackathon submission
 
-v3.0.1 is the QVAC hackathon cut. Everything reviewers need to
+This is the QVAC hackathon cut. Everything reviewers need to
 evaluate the project is committed in this repo; no live SDK is
 required to see the trace.
 
 ### New in this revision
 
-The post-review revision of v3.0.1 adds a Psy-family model showcase,
-a cross-profile micro-benchmark, a self-contained demo recording,
+The post-review revision adds a Psy-family model showcase, a
+cross-profile micro-benchmark, a self-contained demo recording,
 and a fresh batch of community-voting + social assets. Nothing in
-the existing v3.0.1 surface is broken — the new commands sit
-alongside the existing CLI.
+the prior surface is broken — the new commands sit alongside the
+existing CLI.
 
 - **`edgewell psy`** — Psy-family model catalog + domain-aware
   routing demo. Prints the 3 Psy models registered across
@@ -111,8 +113,8 @@ alongside the existing CLI.
   at `social/VOTING-CARD.md`.
 - **`social/JUDGES-ONE-PAGER.md`** — printable one-page summary
   for hackathon judges: pitch, "what to look at first", a
-  "what's new in v3.0.1" line, key links, and a fixed-width
-  footer with the URL.
+  "what's new" line, key links, and a fixed-width footer with
+  the URL.
 
 - **Project write-up**: [`HACKATHON-SUBMISSION.md`](./HACKATHON-SUBMISSION.md)
   is the canonical submission document — track, SDK, run
@@ -139,12 +141,12 @@ alongside the existing CLI.
   byte-for-byte (the showcase stub is deterministic — no
   `Date.now()`, no random IDs).
 
-## What's new in v3.0.1 (hardening)
+### Quality and completeness pass
 
-v3.0.1 is a quality-and-completeness pass over the v3.0.0 surface.
-The CLI was ported from JavaScript to TypeScript (`tsconfig.build.json`
-+ `pnpm build`), every blocker-class finding from the third UAT
-pass was fixed, and the companion subsystem is now fully wired up.
+The CLI was ported from JavaScript to TypeScript
+(`tsconfig.build.json` + `pnpm build`), every blocker-class finding
+from the third UAT pass was fixed, and the companion subsystem is
+now fully wired up.
 
 - **`edgewell showcase` command**: prints the multi-agent +
   tool-calling + P2P-fallback trace without a live QVAC SDK. See
@@ -358,7 +360,7 @@ Everything EdgeWell needs lives under `data/`:
 - `data/expenses.jsonl` - amount + category rows
 - `data/profile.json`   - name, goals, baseline numbers
 - `data/rag/chunks.json` - local lexical RAG index
-- `data/rag/vectors.json` - local vector RAG index (v3.0.0+)
+- `data/rag/vectors.json` - local vector RAG index
 - `~/.edgewell/secret`  - companion HMAC secret (mode `0600`)
 - `~/.edgewell/state.json` - last applied form-factor profile
 
