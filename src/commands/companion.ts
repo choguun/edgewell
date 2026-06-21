@@ -5,8 +5,9 @@
 // endpoints to a paired phone, and announces itself on the LAN via
 // the mDNS stub.
 
-import path from "node:path";
-import { promises as fs } from "node:fs";
+import path from "path";
+import { promises as fs } from "fs";
+import os from "os";
 import { header, c, parseFlags } from "../cli.js";
 import { startCompanion } from "../companion/server.js";
 import { makeAnnouncer, buildServiceUrl } from "../companion/mdns.js";
@@ -30,7 +31,7 @@ export function resolveAuthFlag(flags) {
 
 export async function companionCommand(args, ew) {
   const flags = parseFlags(args, {
-    host: "127.0.0.1",
+    host: "0.0.0.0",
     port: 8787,
     auth: true,
     "print-token": false,
@@ -79,7 +80,21 @@ export async function companionCommand(args, ew) {
   const { server, port: actualPort } = await startCompanion({ ew, secret, host, port, webDir });
   const announcer = makeAnnouncer({ name: "edgewell", host, port: actualPort });
   await announcer.start();
-  console.log(c.green(buildServiceUrl({ host, port: actualPort, name: "edgewell" })));
+  
+  if (host === "0.0.0.0") {
+    console.log(c.green(`EdgeWell companion server listening at:`));
+    console.log(c.green(`  http://localhost:${actualPort}/`));
+    const interfaces = os.networkInterfaces();
+    for (const name of Object.keys(interfaces)) {
+      for (const iface of interfaces[name] || []) {
+        if (iface.family === "IPv4" && !iface.internal) {
+          console.log(c.green(`  http://${iface.address}:${actualPort}/`));
+        }
+      }
+    }
+  } else {
+    console.log(c.green(buildServiceUrl({ host, port: actualPort, name: "edgewell" })));
+  }
   process.on("SIGINT", async () => {
     console.log(c.yellow("\nshutting down companion..."));
     await announcer.stop();

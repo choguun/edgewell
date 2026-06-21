@@ -78,27 +78,43 @@ export interface EdgeWellLLM extends LLM {
 
 type CompletionResult = QvacSdkCompletionRun;
 
-async function textFromResult(result: CompletionResult): Promise<string> {
-  // Drain the events stream into a single string. The real
-  // SDK exposes typed events (contentDelta, rawDelta, etc.);
-  // we keep the public surface simple by concatenating the
-  // `text` of every event. For more advanced use (tool
-  // calls, thinking tokens) the orchestrator would need to
-  // inspect the event stream directly.
-  let text = "";
-  for await (const ev of result.events) {
-    if (typeof ev?.text === "string") text += ev.text;
+async function textFromResult(result: any): Promise<string> {
+  if (!result) return "";
+  if (typeof result === "string") return result;
+  if (typeof result.text === "string") return result.text;
+
+  if (result.events) {
+    // Drain the events stream into a single string. The real
+    // SDK exposes typed events (contentDelta, rawDelta, etc.);
+    // we keep the public surface simple by concatenating the
+    // `text` of every event. For more advanced use (tool
+    // calls, thinking tokens) the orchestrator would need to
+    // inspect the event stream directly.
+    let text = "";
+    for await (const ev of result.events) {
+      if (typeof ev?.text === "string") text += ev.text;
+    }
+    // Prefer the aggregated final result if the SDK
+    // populated it (saves re-iterating the events), but fall
+    // back to whatever we accumulated.
+    try {
+      const finalText = (await result.final)?.content;
+      if (typeof finalText === "string" && finalText.length > 0) return finalText;
+    } catch {
+      /* final may reject if the stream errored; keep what we have */
+    }
+    return text;
   }
-  // Prefer the aggregated final result if the SDK
-  // populated it (saves re-iterating the events), but fall
-  // back to whatever we accumulated.
-  try {
-    const finalText = (await result.final)?.content;
-    if (typeof finalText === "string" && finalText.length > 0) return finalText;
-  } catch {
-    /* final may reject if the stream errored; keep what we have */
+
+  if (result.tokenStream) {
+    let text = "";
+    for await (const tok of result.tokenStream) {
+      text += tok;
+    }
+    return text;
   }
-  return text;
+
+  return "";
 }
 
 export class EdgeWellLLM {
@@ -266,14 +282,31 @@ export class EdgeWellLLM {
       temperature,
       stream: true,
     });
-    // The real SDK yields typed events; we forward the `text`
-    // of every `contentDelta` (and any other event that
-    // happens to carry a text payload) so the caller sees
-    // the same token stream it used to get from the stub.
-    for await (const ev of result.events) {
-      if (typeof ev?.text === "string" && ev.text.length > 0) {
-        yield ev.text;
+    if (!result) return;
+    if (typeof result === "string") {
+      yield result;
+      return;
+    }
+    if (result.events) {
+      // The real SDK yields typed events; we forward the `text`
+      // of every `contentDelta` (and any other event that
+      // happens to carry a text payload) so the caller sees
+      // the same token stream it used to get from the stub.
+      for await (const ev of result.events) {
+        if (typeof ev?.text === "string" && ev.text.length > 0) {
+          yield ev.text;
+        }
       }
+      return;
+    }
+    if (result.tokenStream) {
+      for await (const tok of result.tokenStream) {
+        yield tok;
+      }
+      return;
+    }
+    if (typeof result.text === "string") {
+      yield result.text;
     }
   }
 }

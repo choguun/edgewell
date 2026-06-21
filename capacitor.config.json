@@ -1,0 +1,20 @@
+{
+  "appId": "com.edgewell.companion",
+  "appName": "EdgeWell Companion",
+  "webDir": "web",
+  "server": {
+    "androidScheme": "http",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true
+  },
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": false
+    },
+    "CapacitorCookies": {
+      "enabled": false
+    }
+  }
+}

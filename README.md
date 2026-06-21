@@ -342,6 +342,19 @@ EDGEWELL_COMPANION_SECRET=$(cat ~/.edgewell/secret) edgewell companion --port 87
 EDGEWELL_COMPANION_SECRET=$(cat ~/.edgewell/secret) edgewell token my-phone   # mint for a specific subject
 ```
 
+Run without authentication (local dev only — no token prompt in the
+UI, no `Authorization` header required on `/chat`):
+
+```bash
+pnpm dev companion --port 8787 --no-auth
+```
+
+Equivalent form: `--auth=false`. With `--no-auth`, every request
+passes through unauthenticated and the bundled SPA loads straight
+into the chat form. Do not expose this to the LAN; bind to
+`127.0.0.1` (the default `--host` override) if you must combine it
+with a network listener.
+
 Rotate the secret (writes `~/.edgewell/secret` with mode `0600`):
 
 ```bash

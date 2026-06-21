@@ -1,23 +1,29 @@
-// EdgeWell service worker. v3.1.4.
+// EdgeWell service worker. v3.2.0-demo.
 //
-// Caches the static shell (HTML, CSS, JS, manifest, icon) so the
-// phone-as-companion story still loads when the device is briefly
-// offline — e.g. when the user opens the home-screen icon before
-// the desktop companion has finished waking up.
-//
-// Network requests for non-shell URLs (the companion's /chat,
-// /journal, /expenses, /health) are never cached; the page does
-// its own token-aware fetch with a clean error UI when the peer
-// is down.
+// Caches the static shell and, when the app is running inside the
+// Android APK, intercepts requests to `http://localhost:8787/*` and
+// serves them from the in-browser fake companion server. That gives
+// a zero-setup demo where the WebView thinks it is talking to the
+// companion Node.js server, but everything is local.
 //
 // Bump CACHE_NAME on every release so older cached shells are
 // evicted in a single `activate` pass.
 
-const CACHE_NAME = "edgewell-shell-v3.1.4";
+// Load the fake server implementation into the worker context so it
+// can handle localhost:8787 requests offline. It self-registers on
+// `self.EdgeWellFakeServer`.
+try {
+  importScripts("./fake-server.js");
+} catch (err) {
+  console.warn("[sw] failed to load fake-server.js", err);
+}
+
+const CACHE_NAME = "edgewell-shell-v3.2.0-demo";
 const SHELL = [
   "./",
   "./index.html",
   "./app.js",
+  "./fake-server.js",
   "./style.css",
   "./manifest.webmanifest",
   "./icon.svg",
@@ -59,11 +65,32 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+function isLocalhostCompanion(url) {
+  return (
+    url.hostname === "localhost" &&
+    url.port === "8787" &&
+    (url.pathname.startsWith("/chat") ||
+      url.pathname.startsWith("/journal") ||
+      url.pathname.startsWith("/expenses") ||
+      url.pathname.startsWith("/profile") ||
+      url.pathname.startsWith("/health"))
+  );
+}
+
 self.addEventListener("fetch", (event) => {
   const req = event.request;
-  if (req.method !== "GET") return; // never cache mutations
   const url = new URL(req.url);
-  // Bypass cross-origin and any path that looks like an API call.
+
+  // Intercept localhost:8787 companion API calls and serve them from
+  // the fake server. This only happens in the native APK context where
+  // the WebView has been pointed at the local address.
+  if (isLocalhostCompanion(url) && self.EdgeWellFakeServer) {
+    event.respondWith(self.EdgeWellFakeServer.handleRequest(req));
+    return;
+  }
+
+  // Never cache API calls or mutations.
+  if (req.method !== "GET") return;
   if (url.origin !== self.location.origin) return;
   if (url.pathname.startsWith("/chat") ||
       url.pathname.startsWith("/journal") ||
@@ -72,6 +99,7 @@ self.addEventListener("fetch", (event) => {
       url.pathname.startsWith("/health")) {
     return; // let the page handle auth + errors
   }
+
   // Cache-first for shell assets, network-first for everything
   // else on the same origin (so dev-mode edits are picked up).
   event.respondWith(

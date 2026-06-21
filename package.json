@@ -15,7 +15,10 @@
     "typecheck": "tsc --noEmit",
     "prepare": "pnpm build",
     "test": "node --import tsx --test test/*.test.ts",
-    "test:js": "node --test test/*.test.js"
+    "test:js": "node --test test/*.test.js",
+    "cap:sync": "cap sync",
+    "cap:add-android": "cap add android",
+    "cap:build-apk": "cap sync && cd android && ./gradlew assembleDebug && cp app/build/outputs/apk/debug/app-debug.apk ../edgewell-companion.apk"
   },
   "keywords": [
     "qvac",
@@ -36,13 +39,16 @@
     "node": ">=22.17"
   },
   "dependencies": {
+    "@capacitor/android": "^8.4.1",
+    "@capacitor/core": "^8.4.1",
     "@qvac/sdk": "^0.13.5",
     "bare-runtime-darwin-arm64": "^1.29.4"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.4.1",
     "@types/node": "^24.0.0",
     "tsx": "^4.20.0",
     "typescript": "^5.6.0"
   },
-  "packageManager": "pnpm@11.6.0"
+  "packageManager": "pnpm@11.8.0+sha512.c1f5e7c4cb241c8f174b743851d82f42b802324afc8b0f116b96adb15aa06664948dde36960a3ba1079ba5b4b29dd0140135b94b5b5f5263592249d68e555f26"
 }
