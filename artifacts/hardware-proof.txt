@@ -1,107 +1,15 @@
-# EdgeWell v3.0.1 hackathon artifact — produced 2026-06-18
-# File: artifacts/hardware-proof.txt
-# Source: uname / sw_vers / sysctl / node / pnpm / df / edgewell doctor|status|agents list|command-list|showcase
+# EdgeWell v3.0.1 — hardware proof (concise)
+# Source: uname / sw_vers / node / pnpm / sysctl / df / edgewell status|info
 
-==== uname / node / pnpm / memory / cpu ====
-Darwin MacBook-Pro-khxngchoguun-5.local 25.5.0 Darwin Kernel Version 25.5.0: Mon Apr 27 20:41:15 PDT 2026; root:xnu-12377.121.6~2/RELEASE_ARM64_T6041 arm64
-ProductName:		macOS
-ProductVersion:		26.5
-BuildVersion:		25F71
-v24.13.0
-11.6.0
-137438953472
-Apple M4 Max
-16
-16
-
-==== disk ====
-Filesystem      Size    Used   Avail Capacity iused ifree %iused  Mounted on
-/dev/disk3s5   1.8Ti   1.6Ti   149Gi    92%     16M  1.6G    1%   /System/Volumes/Data
-
-==== edgewell doctor ====
-─────────────────
- EdgeWell doctor 
-─────────────────
-OK    node version  24.13.0
-OK    data dir writable  data
-OK    qvac sdk installed  3 exports
-OK    rag index readable  56 chunks
-FAIL  profile readable  no profile on disk — run `edgewell profile init`
-OK    journal store  4 entries
-OK    expense store  4 entries
-OK    p2p peer health  delegation disabled (skipped)
-OK    vector index available  VectorIndex ready (dim=128)
-OK    hybrid search available  HybridSearch export present
-OK    profiles registered  mobile, tinkerer, desktop
-OK    plugin loader v2  v3.0.0 hooks supported
-
-1 check failed
-
-==== edgewell status ====
-─────────────────
- EdgeWell status 
-─────────────────
-local model:  LLAMA_3_2_1B_INST_Q4_0
-delegate:     LLAMA_3_1_8B_INST_Q4_K_M
-p2p:          disabled @ 127.0.0.1:8787 (timeout 30000ms)
-rag chunks:    56
-expenses:      4
-journal:       4
-
-==== edgewell info ====
-───────────────
- EdgeWell info 
-───────────────
-name:     edgewell
-version:  3.0.1
-node:     v24.13.0
-platform: darwin arm64
-data dir: data
-journal:  4 entries
-expenses: 4 entries
-rag:      56 chunks
-
-==== edgewell agents list ====
-──────────────────────────
- EdgeWell agents (v3.0.0) 
-──────────────────────────
-  health       Symptom checker, lab results, general health Q&A.
-  finance      Budgeting, expense analysis, monthly planning.
-  sleep        Sleep phase events, total hours, verdict.
-  nutrition    Meal regularity, average meals per day.
-  hydration    Daily water intake, goal tracking.
-  activity     Steps per day, goal tracking, sedentary flags.
-
-==== edgewell command-list (filtered to new + showcase) ====
-─────────────────────
- Registered commands 
-─────────────────────
-  agents
-  ask
-  bench
-  bench-compare
-  chat
-  ci
-  command-list
-  companion
-  compare
-  config
-  demo-data
-  deps
-  doctor
-  eval
-  expense
-  expenses-entries-active-days
-  expenses-entries-average-per-day
-
-==== edgewell showcase (head 10) ====
-────────────────────────────────────────────────────────────
- EdgeWell v3.0.1 — multi-agent + tool-calling + P2P showcase 
-────────────────────────────────────────────────────────────
-HACKATHON SHOWCASE STUB — replace with real QVAC inference when SDK is wired
-Three questions, three specialists, two tool calls, one fallback.
-
-── Q1 / health ─────────────────────────────────────────
-question: why am I so tired this week
-router:  agent=health
-raw:     Sounds like a fatigue pattern — try a consistent wake time and a 20-minute morning walk. I'll cross-check your last 7 days of journal entrie…
+host     : MacBook-Pro-khxngchoguun-5.local
+os       : macOS 26.5 (25F71) — Darwin 25.5.0 arm64
+node     : v24.13.0
+pnpm     : 11.6.0
+cpu      : Apple M4 Max (16 cores)
+ram      : 137438953472 B (≈ 128 GiB)
+disk     : /dev/disk3s5 1.8 TiB total, 149 GiB avail (92% used)
+edgewell : v3.0.1 — data dir writable, qvac sdk installed (3 exports)
+model    : LLAMA_3_2_1B_INST_Q4_0  delegate: LLAMA_3_1_8B_INST_Q4_K_M
+rag      : 56 chunks  vector dim=128  journal=4  expenses=4
+profiles : mobile, tinkerer, desktop  (p2p disabled @ 127.0.0.1:8787)
+agent#   : 6 specialists (health, finance, sleep, nutrition, hydration, activity) + lifestyle default
